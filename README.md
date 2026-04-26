@@ -2,6 +2,8 @@
 
 
 
+
+
 BRAG (Bot Retrieval-Augmented Generation) is a backend service that enables users to upload and process documents, then query them through a Retrieval-Augmented Generation (RAG) pipeline.
 
 
@@ -10,7 +12,13 @@ The system supports multiple data sources and exposes API endpoints for building
 
 
 
+\---
+
+
+
 \## Features (Phase 1)
+
+
 
 
 
@@ -39,6 +47,10 @@ The system supports multiple data sources and exposes API endpoints for building
 \- Word documents (.docx)
 
 \- Web pages (via URL ingestion)
+
+
+
+\---
 
 
 
