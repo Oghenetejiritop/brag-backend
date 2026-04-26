@@ -36,3 +36,13 @@ The system supports multiple data sources and exposes API endpoints for building
 ## Project Goal
 
 To build a scalable, backend-first platform that allows users and businesses to create custom AI-powered chatbots by uploading their own data and accessing it through API endpoints.
+
+---
+
+  ## Author
+
+Oghenetejiri Peace Onosajerhe
+- [GitHub](https://github.com/oghenetejiritop)
+- [LinkedIn](https://linkedin.com/in/oghenetejiritop) 
+
+---
