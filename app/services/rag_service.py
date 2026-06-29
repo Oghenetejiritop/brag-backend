@@ -60,11 +60,11 @@ class RAGService:
 
     def __init__(
         self,
-        file: str,
+        document_path: str,
         persist_directory: str = "chroma_db",
         prompt: str = DEFAULT_SYSTEM_PROMPT,
     ):
-        self._file = file
+        self._document_path = document_path
         self._persist_directory = persist_directory
 
         self._embeddings = OpenAIEmbeddings()
@@ -98,22 +98,40 @@ class RAGService:
             )
 
         print("[BRAG] Creating vector store...")
-
-        loader = PyPDFLoader(self._file)
-        documents = loader.load()
-
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=DEFAULT_CHUNK_SIZE,
-            chunk_overlap=DEFAULT_CHUNK_OVERLAP,
-        )
-
-        chunked_documents = splitter.split_documents(documents)
+        documents = self._load_documents()
+        chunked_documents = self._split_documents(documents)
 
         return Chroma.from_documents(
             documents=chunked_documents,
             embedding=self._embeddings,
             persist_directory=self._persist_directory,
         )
+
+    def _load_documents(self) -> list:
+        """
+        Load documents from the configured data source.
+
+        Currently supports PDF documents.
+        Additional document loaders (TXT, DOCX, HTML, URLs)
+        will be added in future phases.
+
+        """
+
+        loader = PyPDFLoader(self._document_path)
+        return loader.load()
+
+    def _split_documents(self, documents: list) -> list:
+        """
+        Split loaded documents into overlapping chunks suitable
+        for embedding and semantic retrieval.
+        """
+
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=DEFAULT_CHUNK_SIZE,
+            chunk_overlap=DEFAULT_CHUNK_OVERLAP,
+        )
+
+        return splitter.split_documents(documents)
 
     def _create_retriever(self):
         """
