@@ -1,3 +1,9 @@
+
+from app.core.config import (
+    DEFAULT_DOCUMENT_PATH,
+    DEFAULT_VECTOR_STORE_PATH,
+)
+
 from app.services.rag_service import RAGService
 
 
@@ -7,6 +13,7 @@ from app.services.rag_service import RAGService
 # Later, in the multi-user phase, this will be replaced
 # by user-specific RAG services.
 rag_service = RAGService(
-    document_path = "../../../sample.pdf"
+    document_path = DEFAULT_DOCUMENT_PATH,
+    persist_directory = DEFAULT_VECTOR_STORE_PATH
 )
 

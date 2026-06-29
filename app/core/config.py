@@ -42,3 +42,10 @@ Context:
 Question:
 {question}
 """
+
+# =============================================================================
+# Default Knowledge Base
+# =============================================================================
+
+DEFAULT_DOCUMENT_PATH = "sample.pdf"
+DEFAULT_VECTOR_STORE_PATH = "chroma_db"
