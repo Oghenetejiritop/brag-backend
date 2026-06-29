@@ -1,6 +1,6 @@
 # BRAG Backend
 
-BRAG (Bot Retrieval-Augmented Generation) is a backend service that enables users to upload and process documents, then query them through a Retrieval-Augmented Generation (RAG) pipeline.
+BRAG (Bot Retrieval-Augmented Generator) is a backend service that enables users to upload and process documents, then query them through a Retrieval-Augmented Generation (RAG) pipeline.
 
 The system supports multiple data sources and exposes API endpoints for building custom, domain-specific chatbots powered by user-provided knowledge.
 
