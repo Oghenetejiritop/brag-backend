@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 
+from app.api.routes import router
+
 app = FastAPI(
     title="BRAG API",
     description="Bot Retrieval-Augmented Generator Backend",
@@ -7,27 +9,4 @@ app = FastAPI(
 )
 
 
-@app.get("/")
-def root():
-    """
-    Root endpoint to confirm the API is running.
-    """
-
-    return {
-        "message": "Welcome to BRAG API"
-    }
-
-
-@app.get("/health")
-def health():
-    """
-    Health check endpoint.
-
-    Used by deployment platforms and monitoring tools
-    to verify that the API is running.
-    """
-
-    return {
-        "status": "healthy"
-    }
-
+app.include_router(router)
