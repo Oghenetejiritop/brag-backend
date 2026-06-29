@@ -20,6 +20,8 @@ from app.core.config import (
     DEFAULT_SYSTEM_PROMPT,
 )
 
+from app.core.logger import get_logger
+
 
 class RAGService:
     """
@@ -39,6 +41,8 @@ class RAGService:
         persist_directory: str = "chroma_db",
         prompt: str = DEFAULT_SYSTEM_PROMPT,
     ):
+
+        self._logger = get_logger("rag_service")
 
         self._document_path = document_path
         self._persist_directory = persist_directory
@@ -66,14 +70,15 @@ class RAGService:
         """
 
         if (exists(self._persist_directory) and listdir(self._persist_directory)):
-            print("[BRAG] Loading existing vector store...")
+            self._logger.info("Loading existing vector store...")
 
             return Chroma(
                 persist_directory=self._persist_directory,
                 embedding_function=self._embeddings,
             )
 
-        print("[BRAG] Creating vector store...")
+        self._logger.info("Creating vector store from documents...")
+        
         documents = self._load_documents()
         chunked_documents = self._split_documents(documents)
 
