@@ -1,109 +1,42 @@
-import os
+from os.path import exists
+from os import listdir
 
 from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_community.vectorstores import Chroma
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 
-prompt_instruction = """
 
+# =============================================================================
+# Default Configuration
+# These values centralize the RAG configuration and avoid hardcoded "magic
+# numbers" throughout the codebase.
+# =============================================================================
+
+DEFAULT_CHUNK_SIZE = 1000
+DEFAULT_CHUNK_OVERLAP = 150
+
+DEFAULT_RETRIEVAL_K = 4
+DEFAULT_FETCH_K = 20
+
+DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_TEMPERATURE = 0
+
+
+DEFAULT_SYSTEM_PROMPT = """
 You are a helpful assistant that answers questions using only the provided context.
 
 Instructions:
 - Use only information from the retrieved context.
-- If the user asks for a summary, overview, explanation, or description, summarize the retrieved context.
+- If the user asks for a summary, overview, explanation, or description,
+  summarize the retrieved context.
 - If the answer is not present in the context, reply:
   "I don't know based on the provided information."
 - Do not use outside knowledge or invent facts.
-"""
-
-class RAGProcessor:
-    def __init__(
-        self,
-        file: str,
-        persist_directory: str = "chroma_db",
-        prompt_instruction: str = prompt_instruction
-    ):
-
-        self.__embeddings = OpenAIEmbeddings()
-
-        # Load existing database or build a new one
-        if os.path.exists(persist_directory) and os.listdir(persist_directory):
-            print("Loading existing vector database...")
-
-            self.__db = Chroma(
-                persist_directory=persist_directory,
-                embedding_function=self.__embeddings,
-            )
-
-        else:
-            print("Creating vector database...")
-
-            loader = PyPDFLoader(file)
-            docs = loader.load()
-
-            splitter = RecursiveCharacterTextSplitter(
-                chunk_size=1000,
-                chunk_overlap=150,
-            )
-
-            split_docs = splitter.split_documents(docs)
-
-            self.__db = Chroma.from_documents(
-                documents=split_docs,
-                embedding=self.__embeddings,
-                persist_directory=persist_directory,
-            )
-
-
-        # Retriever using MMR
-        retriever = self.__db.as_retriever(
-            search_type="mmr",
-            search_kwargs={
-                "k": 4,
-                "fetch_k": 20,
-            },
-        )
-
-        prompt_instruction = self.__set_prompt_instruction(prompt_instruction)
-        prompt = ChatPromptTemplate.from_template(prompt_instruction)
-
-        self.__llm = ChatOpenAI(
-            model="gpt-4o-mini",
-            temperature=0,
-        )
-
-        self.__rag_chain = (
-            {
-                "context": retriever | self.__format_docs,
-                "question": RunnablePassthrough(),
-            }
-            | prompt
-            | self.__llm
-            | StrOutputParser()
-        )
-
-    def __format_docs(self, docs):
-        """Format retrieved documents with page metadata."""
-
-        formatted = []
-
-        for doc in docs:
-            page = doc.metadata.get("page", "Unknown")
-            formatted.append(
-                f"Page {page + 1}\n"
-                "--------------------\n"
-                f"{doc.page_content}"
-            )
-
-        return "\n\n".join(formatted)
-
-    def __set_prompt_instruction(self, prompt: str):
-        return prompt + """
 
 Context:
 {context}
@@ -112,5 +45,149 @@ Question:
 {question}
 """
 
-    def generate_response(self, query: str):
-        return self.__rag_chain.invoke(query)
+
+class RAGService:
+    """
+    Manages the complete Retrieval-Augmented Generation (RAG) workflow.
+
+    Responsibilities:
+        - Load or create the vector database
+        - Configure semantic retrieval
+        - Build the prompt template
+        - Initialize the language model
+        - Generate answers from retrieved context
+    """
+
+    def __init__(
+        self,
+        file: str,
+        persist_directory: str = "chroma_db",
+        prompt: str = DEFAULT_SYSTEM_PROMPT,
+    ):
+        self._file = file
+        self._persist_directory = persist_directory
+
+        self._embeddings = OpenAIEmbeddings()
+
+        self._vector_store = self._initialize_vector_database()
+        self._retriever = self._create_retriever()
+
+        self._prompt = ChatPromptTemplate.from_template(prompt)
+
+        self._llm = ChatOpenAI(
+            model=DEFAULT_MODEL,
+            temperature=DEFAULT_TEMPERATURE,
+        )
+
+        self._rag_chain = self._build_chain()
+
+    def _initialize_vector_database(self):
+        """
+        Load an existing Chroma vector database if available.
+
+        Otherwise, create a new vector database by loading,
+        splitting, embedding, and storing the supplied document.
+        """
+
+        if (exists(self._persist_directory) and listdir(self._persist_directory)):
+            print("[BRAG] Loading existing vector store...")
+
+            return Chroma(
+                persist_directory=self._persist_directory,
+                embedding_function=self._embeddings,
+            )
+
+        print("[BRAG] Creating vector store...")
+
+        loader = PyPDFLoader(self._file)
+        documents = loader.load()
+
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=DEFAULT_CHUNK_SIZE,
+            chunk_overlap=DEFAULT_CHUNK_OVERLAP,
+        )
+
+        chunked_documents = splitter.split_documents(documents)
+
+        return Chroma.from_documents(
+            documents=chunked_documents,
+            embedding=self._embeddings,
+            persist_directory=self._persist_directory,
+        )
+
+    def _create_retriever(self):
+        """
+        Configure semantic retrieval using Maximum Marginal Relevance (MMR).
+
+        MMR improves retrieval quality by returning relevant documents
+        while reducing redundant results.
+        """
+
+        return self._vector_store.as_retriever(
+            search_type="mmr",
+            search_kwargs={
+                "k": DEFAULT_RETRIEVAL_K,
+                "fetch_k": DEFAULT_FETCH_K,
+            },
+        )
+
+    def _build_chain(self):
+        """
+        Assemble the complete LCEL RAG pipeline.
+
+            User Question
+
+                    -> Semantic Retrieval
+                    -> Format Documents
+                    -> Prompt Template
+                    -> Language Model
+                    -> String Output Parser
+        """
+
+        return (
+            {
+                "context": self._retriever | self._format_documents,
+                "question": RunnablePassthrough(),
+            }
+            | self._prompt
+            | self._llm
+            | StrOutputParser()
+        )
+
+    def _format_documents(self, documents: list) -> str:
+        """
+        Convert retrieved LangChain Document objects into a readable
+        string for prompt injection.
+
+        Including page numbers provides additional context for both
+        users and future debugging.
+        """
+
+        formatted_documents = []
+
+        for document in documents:
+            page = document.metadata.get("page", "Unknown")
+
+            if isinstance(page, int):
+                page += 1
+
+            formatted_documents.append(
+                f"Page {page}\n"
+                "--------------------\n"
+                f"{document.page_content}"
+            )
+
+        return "\n\n".join(formatted_documents)
+
+    def answer_question(self, question: str) -> str:
+        """
+        Generate an answer using the configured RAG pipeline.
+
+        Args:
+            question: The user's natural language question.
+
+        Returns:
+            A response generated strictly from the retrieved context.
+        """
+
+        return self._rag_chain.invoke(question)
