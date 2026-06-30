@@ -2,6 +2,8 @@ from pathlib import Path
 
 from fastapi import UploadFile
 
+from app.core.config import SUPPORTED_DOCUMENT_EXTENSIONS
+
 
 class UploadService:
     """
@@ -40,6 +42,35 @@ class UploadService:
             exist_ok=True,
         )
 
+
+    def _validate_file_type(
+        self,
+        file: UploadFile,
+    ) -> None:
+        """
+        Validate that the uploaded document type is supported.
+
+        Args:
+            file:
+                Uploaded file received by FastAPI.
+
+        Raises:
+            ValueError:
+                If the uploaded document type is unsupported.
+        """
+
+        extension = Path(file.filename).suffix.lower()
+
+        if extension not in SUPPORTED_DOCUMENT_EXTENSIONS:
+            supported = ", ".join(
+                sorted(SUPPORTED_DOCUMENT_EXTENSIONS)
+            )
+
+            raise ValueError(
+                f"Unsupported document type '{extension}'. "
+                f"Supported types: {supported}"
+            )
+
     async def save_file(
         self,
         file: UploadFile,
@@ -55,6 +86,11 @@ class UploadService:
             Absolute path to the saved file.
         """
 
+        # -------------------------------------------------------------
+        # Reject unsupported document types before writing to disk.
+        # -------------------------------------------------------------
+        self._validate_file_type(file)
+
         file_path = self._upload_directory / file.filename
 
         # -------------------------------------------------------------
@@ -67,3 +103,4 @@ class UploadService:
             destination.write(contents)
 
         return str(file_path)
+

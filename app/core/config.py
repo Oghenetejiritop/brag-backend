@@ -49,3 +49,15 @@ Question:
 
 DEFAULT_DOCUMENT_PATH = "sample.pdf"
 DEFAULT_VECTOR_STORE_PATH = "chroma_db"
+
+# ==========================================================
+# Supported document types.
+#
+# Future phases will expand this list as BRAG gains support
+# for additional document loaders.
+# ==========================================================
+
+SUPPORTED_DOCUMENT_EXTENSIONS = {
+    ".pdf",
+}
+

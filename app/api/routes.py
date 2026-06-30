@@ -1,4 +1,5 @@
 
+
 from fastapi import (
     APIRouter,
     File,
@@ -10,8 +11,6 @@ from app.api.schemas import (
     QueryRequest,
     QueryResponse
     )
-
-from app.core.config import DEFAULT_VECTOR_STORE_PATH
 
 from app.dependencies import (
     rag_manager,
@@ -58,6 +57,7 @@ def query(request: QueryRequest):
 
     return QueryResponse(answer=answer)
 
+
 @router.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     """
@@ -71,6 +71,12 @@ async def upload_file(file: UploadFile = File(...)):
         # Initialize the RAG pipeline using the saved document.
         rag_manager.initialize_from_file(file_path)
 
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        )
+
     except Exception as error:
         raise HTTPException(
             status_code=500,
@@ -81,3 +87,4 @@ async def upload_file(file: UploadFile = File(...)):
         "message": "Document uploaded successfully.",
         "filename": file.filename,
     }
+
