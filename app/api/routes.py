@@ -36,23 +36,20 @@ def health():
         "status": "healthy"
     }
 
-@router.post("/query", response_model=QueryResponse,)
+@router.post("/query", response_model=QueryResponse)
 def query(request: QueryRequest):
 
     if not rag_manager.has_service():
         raise HTTPException(
             status_code=400,
-            detail="No knowledge base has been uploaded."
+            detail="No document uploaded. Please upload a file first."
         )
 
     answer = rag_manager.get_service().answer_question(
         request.question
     )
 
-    return QueryResponse(
-        answer=answer
-    )
-
+    return QueryResponse(answer=answer)
 
 @router.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
@@ -60,17 +57,14 @@ async def upload_file(file: UploadFile = File(...)):
     Upload a document and initialize RAG system.
     """
 
-    # 1. Save uploaded file
     file_path = os.path.join("uploads", file.filename)
 
     with open(file_path, "wb") as buffer:
         buffer.write(await file.read())
 
-    # 2. Initialize RAG system
     rag_manager.initialize_from_file(file_path)
 
     return {
-        "message": "File uploaded and knowledge base created successfully",
+        "message": "Document uploaded and RAG system initialized",
         "filename": file.filename
     }
-

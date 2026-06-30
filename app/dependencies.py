@@ -27,3 +27,6 @@ class RAGManager:
 
     def has_service(self) -> bool:
         return self._rag_service is not None
+
+
+rag_manager = RAGManager()
