@@ -37,20 +37,16 @@ class RAGService:
 
     def __init__(
         self,
-        document_path: str,
         persist_directory: str = "chroma_db",
         prompt: str = DEFAULT_SYSTEM_PROMPT,
     ):
-
         self._logger = get_logger("rag_service")
 
-        self._document_path = document_path
         self._persist_directory = persist_directory
-
         self._embeddings = OpenAIEmbeddings()
 
-        self._vector_store = self._initialize_vector_database()
-        self._retriever = self._create_retriever()
+        self._vector_store = None
+        self._retriever = None
 
         self._prompt = ChatPromptTemplate.from_template(prompt)
 
@@ -59,38 +55,11 @@ class RAGService:
             temperature=DEFAULT_TEMPERATURE,
         )
 
-        self._rag_chain = self._build_chain()
+        self._rag_chain = None
 
-    def _initialize_vector_database(self):
+    def initialize_from_file(self, file_path: str):
         """
-        Load an existing Chroma vector database if available.
-
-        Otherwise, create a new vector database by loading,
-        splitting, embedding, and storing the supplied document.
-        """
-
-        if (exists(self._persist_directory) and listdir(self._persist_directory)):
-            self._logger.info("Loading existing vector store...")
-
-            return Chroma(
-                persist_directory=self._persist_directory,
-                embedding_function=self._embeddings,
-            )
-
-        self._logger.info("Creating vector store from documents...")
-        
-        documents = self._load_documents()
-        chunked_documents = self._split_documents(documents)
-
-        return Chroma.from_documents(
-            documents=chunked_documents,
-            embedding=self._embeddings,
-            persist_directory=self._persist_directory,
-        )
-
-    def _load_documents(self) -> list:
-        """
-        Load documents from the configured data source.
+        Build vector database from uploaded file.
 
         Currently supports PDF documents.
         Additional document loaders (TXT, DOCX, HTML, URLs)
@@ -98,31 +67,25 @@ class RAGService:
 
         """
 
-        loader = PyPDFLoader(self._document_path)
-        return loader.load()
+        self._logger.info(f"Initializing RAG from file: {file_path}")
 
-    def _split_documents(self, documents: list) -> list:
-        """
-        Split loaded documents into overlapping chunks suitable
-        for embedding and semantic retrieval.
-        """
+        loader = PyPDFLoader(file_path)
+        documents = loader.load()
 
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=DEFAULT_CHUNK_SIZE,
             chunk_overlap=DEFAULT_CHUNK_OVERLAP,
         )
 
-        return splitter.split_documents(documents)
+        chunked_docs = splitter.split_documents(documents)
 
-    def _create_retriever(self):
-        """
-        Configure semantic retrieval using Maximum Marginal Relevance (MMR).
+        self._vector_store = Chroma.from_documents(
+            documents=chunked_docs,
+            embedding=self._embeddings,
+            persist_directory=self._persist_directory,
+        )
 
-        MMR improves retrieval quality by returning relevant documents
-        while reducing redundant results.
-        """
-
-        return self._vector_store.as_retriever(
+        self._retriever = self._vector_store.as_retriever(
             search_type="mmr",
             search_kwargs={
                 "k": DEFAULT_RETRIEVAL_K,
@@ -130,63 +93,20 @@ class RAGService:
             },
         )
 
-    def _build_chain(self):
-        """
-        Assemble the complete LCEL RAG pipeline.
+        self._rag_chain = self._build_chain()
 
-            User Question
+        self._logger.info("RAG initialization complete")
 
-                    -> Semantic Retrieval
-                    -> Format Documents
-                    -> Prompt Template
-                    -> Language Model
-                    -> String Output Parser
-        """
-
-        return (
-            {
-                "context": self._retriever | self._format_documents,
-                "question": RunnablePassthrough(),
-            }
-            | self._prompt
-            | self._llm
-            | StrOutputParser()
-        )
-
-    def _format_documents(self, documents: list) -> str:
-        """
-        Convert retrieved LangChain Document objects into a readable
-        string for prompt injection.
-
-        Including page numbers provides additional context for both
-        users and future debugging.
-        """
-
-        formatted_documents = []
-
-        for document in documents:
-            page = document.metadata.get("page", "Unknown")
-
-            if isinstance(page, int):
-                page += 1
-
-            formatted_documents.append(
-                f"Page {page}\n"
-                "--------------------\n"
-                f"{document.page_content}"
-            )
-
-        return "\n\n".join(formatted_documents)
 
     def answer_question(self, question: str) -> str:
         """
-        Generate an answer using the configured RAG pipeline.
-
-        Args:
-            question: The user's natural language question.
-
-        Returns:
-            A response generated strictly from the retrieved context.
+        Generate answer from RAG pipeline.
         """
 
+        if not self._rag_chain:
+            raise ValueError(
+                "RAG system not initialized. Upload a document first."
+            )
+
         return self._rag_chain.invoke(question)
+    

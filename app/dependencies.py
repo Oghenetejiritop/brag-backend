@@ -3,6 +3,7 @@ from typing import Optional
 from app.services.rag_service import RAGService
 
 
+
 class RAGManager:
     """
     Manages the active RAG service instance.
@@ -14,29 +15,15 @@ class RAGManager:
     """
 
     def __init__(self):
-        self._rag_service: Optional[RAGService] = None
+        self._rag_service: RAGService | None = RAGService()
 
-    def set_service(self, rag_service: RAGService) -> None:
-        """
-        Register the active RAG service.
-        """
-        self._rag_service = rag_service
+    def initialize_from_file(self, file_path: str):
+        self._rag_service.initialize_from_file(file_path)
 
-    def get_service(self) -> Optional[RAGService]:
-        """
-        Return the active RAG service.
-
-        Returns:
-            The configured RAG service or None if no
-            knowledge base has been uploaded.
-        """
+    def get_service(self) -> RAGService:
+        if not self._rag_service:
+            raise ValueError("RAG service not initialized")
         return self._rag_service
 
     def has_service(self) -> bool:
-        """
-        Indicates whether a knowledge base has been loaded.
-        """
         return self._rag_service is not None
-
-
-rag_manager = RAGManager()

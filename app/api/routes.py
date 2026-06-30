@@ -1,7 +1,14 @@
-from fastapi import APIRouter
-from fastapi import HTTPException
+import os
+
+from fastapi import (
+    APIRouter,
+    File,
+    HTTPException,
+    UploadFile
+    )
 
 from app.api.schemas import QueryRequest, QueryResponse
+from app.core.config import DEFAULT_VECTOR_STORE_PATH
 from app.dependencies import rag_manager
 
 
@@ -45,4 +52,25 @@ def query(request: QueryRequest):
     return QueryResponse(
         answer=answer
     )
+
+
+@router.post("/upload")
+async def upload_file(file: UploadFile = File(...)):
+    """
+    Upload a document and initialize RAG system.
+    """
+
+    # 1. Save uploaded file
+    file_path = os.path.join("uploads", file.filename)
+
+    with open(file_path, "wb") as buffer:
+        buffer.write(await file.read())
+
+    # 2. Initialize RAG system
+    rag_manager.initialize_from_file(file_path)
+
+    return {
+        "message": "File uploaded and knowledge base created successfully",
+        "filename": file.filename
+    }
 
