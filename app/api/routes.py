@@ -1,7 +1,8 @@
 from fastapi import APIRouter
+from fastapi import HTTPException
 
 from app.api.schemas import QueryRequest, QueryResponse
-from app.dependencies import rag_service
+from app.dependencies import rag_manager
 
 
 router = APIRouter()
@@ -29,12 +30,17 @@ def health():
     }
 
 @router.post("/query", response_model=QueryResponse,)
-def query(request: QueryRequest,):
-    """
-    Query the BRAG knowledge base.
-    """
+def query(request: QueryRequest):
 
-    answer = rag_service.answer_question(request.question)
+    if not rag_manager.has_service():
+        raise HTTPException(
+            status_code=400,
+            detail="No knowledge base has been uploaded."
+        )
+
+    answer = rag_manager.get_service().answer_question(
+        request.question
+    )
 
     return QueryResponse(
         answer=answer
