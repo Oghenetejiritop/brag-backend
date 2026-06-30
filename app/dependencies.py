@@ -1,6 +1,6 @@
 
 from app.services.rag_service import RAGService
-
+from app.services.upload_service import UploadService
 
 class RAGManager:
     """
@@ -28,3 +28,4 @@ class RAGManager:
 
 
 rag_manager = RAGManager()
+upload_service = UploadService()

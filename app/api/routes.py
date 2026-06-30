@@ -1,4 +1,3 @@
-import os
 
 from fastapi import (
     APIRouter,
@@ -7,9 +6,17 @@ from fastapi import (
     UploadFile
     )
 
-from app.api.schemas import QueryRequest, QueryResponse
+from app.api.schemas import (
+    QueryRequest,
+    QueryResponse
+    )
+
 from app.core.config import DEFAULT_VECTOR_STORE_PATH
-from app.dependencies import rag_manager
+
+from app.dependencies import (
+    rag_manager,
+    upload_service
+    )
 
 
 router = APIRouter()
@@ -54,27 +61,17 @@ def query(request: QueryRequest):
 @router.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     """
-    Upload a document and initialize the RAG system.
+    Upload a document and initialize the active RAG system.
     """
 
-    # -------------------------------------------------------------------------
-    # Ensure the upload directory exists.
-    # -------------------------------------------------------------------------
-    os.makedirs("uploads", exist_ok=True)
-
-    file_path = os.path.join("uploads", file.filename)
-
-    with open(file_path, "wb") as buffer:
-        buffer.write(await file.read())
-
     try:
+        # Save the uploaded document.
+        file_path = await upload_service.save_file(file)
+
+        # Initialize the RAG pipeline using the saved document.
         rag_manager.initialize_from_file(file_path)
 
     except Exception as error:
-        # ---------------------------------------------------------------------
-        # Convert internal exceptions into readable API responses.
-        # This also makes debugging much easier during development.
-        # ---------------------------------------------------------------------
         raise HTTPException(
             status_code=500,
             detail=str(error),
@@ -84,4 +81,3 @@ async def upload_file(file: UploadFile = File(...)):
         "message": "Document uploaded successfully.",
         "filename": file.filename,
     }
-
