@@ -5,7 +5,12 @@ __pycache__/
 
 *.pyc
 chroma_db/
+*.bat
+*.cmd
+*.docx
+*.html
 *.pdf
+*.txt
 
 # C extensions
 *.so

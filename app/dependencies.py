@@ -1,7 +1,5 @@
-from typing import Optional
 
 from app.services.rag_service import RAGService
-
 
 
 class RAGManager:
