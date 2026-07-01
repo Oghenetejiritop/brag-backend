@@ -1,6 +1,5 @@
 from os.path import exists
 
-from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.vectorstores import Chroma
 
 from langchain_openai import (
@@ -8,9 +7,6 @@ from langchain_openai import (
     OpenAIEmbeddings,
 )
 
-from langchain_text_splitters import (
-    RecursiveCharacterTextSplitter,
-)
 
 from langchain_core.output_parsers import (
     StrOutputParser,
@@ -25,8 +21,6 @@ from langchain_core.runnables import (
 )
 
 from app.core.config import (
-    DEFAULT_CHUNK_SIZE,
-    DEFAULT_CHUNK_OVERLAP,
     DEFAULT_VECTOR_STORE_PATH,
     DEFAULT_FETCH_K,
     DEFAULT_MODEL,
@@ -36,6 +30,7 @@ from app.core.config import (
 )
 
 from app.core.logger import get_logger
+from app.services.document_service import DocumentService
 
 
 class RAGService:
@@ -43,13 +38,14 @@ class RAGService:
     Handles the complete Retrieval-Augmented Generation (RAG) pipeline.
 
     Responsibilities
+
     ----------------
-    - Load supported documents.
-    - Split documents into semantic chunks.
+    - Coordinate the RAG pipeline.
     - Generate embeddings.
-    - Build the Chroma vector database.
+    - Build the vector database.
     - Configure semantic retrieval.
-    - Execute the LangChain Expression Language (LCEL) pipeline.
+    - Build the LCEL chain.
+    - Answer user questions.
     """
 
     def __init__(
@@ -59,8 +55,13 @@ class RAGService:
     ) -> None:
 
         self._logger = get_logger("rag_service")
-
         self._persist_directory = persist_directory
+
+        # -------------------------------------------------------------
+        # Service responsible for document loading and preprocessing.
+        # -------------------------------------------------------------
+        self._document_service = DocumentService()
+
 
         # -------------------------------------------------------------
         # OpenAI embedding model used for vector generation.
@@ -105,9 +106,7 @@ class RAGService:
 
         self._logger.info(f"Initializing RAG from '{file_path}'")
 
-        documents = self._load_documents(file_path)
-
-        chunked_documents = self._split_documents(documents)
+        chunked_documents =self._document_service.load_and_split(file_path)
 
         self._create_vector_store(chunked_documents)
 
@@ -133,35 +132,6 @@ class RAGService:
     # ================================================================
     # Private Helper Methods
     # ================================================================
-
-    def _load_documents(self, file_path: str) -> list:
-        """
-        Load documents from disk.
-
-        Currently uses PyPDFLoader.
-
-        Future loaders will be selected dynamically based on
-        file extension.
-        """
-
-        loader = PyPDFLoader(file_path)
-
-        return loader.load()
-
-    def _split_documents(self, documents: list) -> list:
-        """
-        Split large documents into overlapping chunks.
-
-        Chunk overlap helps preserve context between neighbouring
-        chunks during retrieval.
-        """
-
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=DEFAULT_CHUNK_SIZE,
-            chunk_overlap=DEFAULT_CHUNK_OVERLAP,
-        )
-
-        return splitter.split_documents(documents)
 
     def _create_vector_store(
         self,
