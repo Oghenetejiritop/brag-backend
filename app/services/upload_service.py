@@ -5,6 +5,11 @@ from fastapi import UploadFile
 
 from app.core.config import SUPPORTED_DOCUMENT_EXTENSIONS
 
+from app.exceptions.upload_exceptions import (
+    EmptyFilenameError,
+    UnsupportedDocumentTypeError,
+)
+
 
 class UploadService:
     """
@@ -56,7 +61,7 @@ class UploadService:
                 Uploaded file received by FastAPI.
 
         Raises:
-            ValueError:
+            UnsupportedDocumentTypeError:
                 If the uploaded document type is unsupported.
         """
 
@@ -67,7 +72,7 @@ class UploadService:
                 sorted(SUPPORTED_DOCUMENT_EXTENSIONS)
             )
 
-            raise ValueError(
+            raise UnsupportedDocumentTypeError(
                 f"Unsupported document type '{extension}'. "
                 f"Supported types: {supported}"
             )
@@ -90,12 +95,6 @@ class UploadService:
             A unique filename suitable for storage.
         """
 
-        # Ensure the upload directory exists if deleted.
-        self._upload_directory.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
         unique_id = uuid4().hex
 
         return f"{unique_id}_{original_filename}"
@@ -111,14 +110,29 @@ class UploadService:
             file:
                 Uploaded file received by FastAPI.
 
+            Raises:
+            EmptyFilenameError
+            UnsupportedDocumentTypeError
+            
         Returns:
             Absolute path to the saved file.
         """
+
+        if not file.filename:
+            raise EmptyFilenameError(
+            "Uploaded file must have a filename."
+            )
 
         # -------------------------------------------------------------
         # Reject unsupported document types before writing to disk.
         # -------------------------------------------------------------
         self._validate_file_type(file)
+
+        # Ensure the upload directory exists if deleted.
+        self._upload_directory.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
 
         # -------------------------------------------------------------
         # Generate a unique filename to avoid overwriting existing

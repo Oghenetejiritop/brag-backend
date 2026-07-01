@@ -17,6 +17,11 @@ from app.dependencies import (
     upload_service
     )
 
+from app.exceptions.upload_exceptions import (
+    EmptyFilenameError,
+    UnsupportedDocumentTypeError,
+)
+
 
 router = APIRouter()
 
@@ -41,6 +46,7 @@ def health():
     return {
         "status": "healthy"
     }
+
 
 @router.post("/query", response_model=QueryResponse)
 def query(request: QueryRequest):
@@ -71,7 +77,13 @@ async def upload_file(file: UploadFile = File(...)):
         # Initialize the RAG pipeline using the saved document.
         rag_manager.initialize_from_file(file_path)
 
-    except ValueError as error:
+    except UnsupportedDocumentTypeError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        )
+
+    except EmptyFilenameError as error:
         raise HTTPException(
             status_code=400,
             detail=str(error),
