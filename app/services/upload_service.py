@@ -1,4 +1,5 @@
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import UploadFile
 
@@ -71,6 +72,34 @@ class UploadService:
                 f"Supported types: {supported}"
             )
 
+    def _generate_unique_filename(
+        self,
+        original_filename: str,
+    ) -> str:
+        """
+        Generate a unique filename while preserving the original name.
+
+        A UUID prefix prevents filename collisions when multiple users
+        upload documents with identical names.
+
+        Args:
+            original_filename:
+                The filename provided by the client.
+
+        Returns:
+            A unique filename suitable for storage.
+        """
+
+        # Ensure the upload directory exists if deleted.
+        self._upload_directory.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        unique_id = uuid4().hex
+
+        return f"{unique_id}_{original_filename}"
+
     async def save_file(
         self,
         file: UploadFile,
@@ -91,7 +120,13 @@ class UploadService:
         # -------------------------------------------------------------
         self._validate_file_type(file)
 
-        file_path = self._upload_directory / file.filename
+        # -------------------------------------------------------------
+        # Generate a unique filename to avoid overwriting existing
+        # documents that share the same original name.
+        # -------------------------------------------------------------
+        unique_filename = self._generate_unique_filename(file.filename)
+
+        file_path = self._upload_directory / unique_filename
 
         # -------------------------------------------------------------
         # Read the uploaded file and persist it.
