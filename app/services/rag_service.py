@@ -1,12 +1,10 @@
 from os.path import exists
 
 from langchain_community.vectorstores import Chroma
+from langchain_core.documents import Document
+from langchain_openai import OpenAIEmbeddings
 
-from langchain_openai import (
-    ChatOpenAI,
-    OpenAIEmbeddings,
-)
-
+from langchain_openai import ChatOpenAI
 
 from langchain_core.output_parsers import (
     StrOutputParser,
@@ -31,7 +29,7 @@ from app.core.config import (
 
 from app.core.logger import get_logger
 from app.services.document_service import DocumentService
-
+from app.services.vector_store_service import VectorStoreService
 
 class RAGService:
     """
