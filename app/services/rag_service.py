@@ -1,9 +1,5 @@
 from os.path import exists
 
-from langchain_community.vectorstores import Chroma
-from langchain_core.documents import Document
-from langchain_openai import OpenAIEmbeddings
-
 from langchain_openai import ChatOpenAI
 
 from langchain_core.output_parsers import (
@@ -19,15 +15,13 @@ from langchain_core.runnables import (
 )
 
 from app.core.config import (
-    DEFAULT_VECTOR_STORE_PATH,
-    DEFAULT_FETCH_K,
     DEFAULT_MODEL,
-    DEFAULT_RETRIEVAL_K,
     DEFAULT_SYSTEM_PROMPT,
     DEFAULT_TEMPERATURE,
 )
 
 from app.core.logger import get_logger
+
 from app.services.document_service import DocumentService
 from app.services.vector_store_service import VectorStoreService
 
@@ -48,28 +42,26 @@ class RAGService:
 
     def __init__(
         self,
-        persist_directory: str = DEFAULT_VECTOR_STORE_PATH,
         prompt: str = DEFAULT_SYSTEM_PROMPT,
     ) -> None:
 
         self._logger = get_logger("rag_service")
-        self._persist_directory = persist_directory
 
         # -------------------------------------------------------------
         # Service responsible for document loading and preprocessing.
         # -------------------------------------------------------------
         self._document_service = DocumentService()
 
-
         # -------------------------------------------------------------
-        # OpenAI embedding model used for vector generation.
+        # Service responsible for vector database creation and
+        # retrieval configuration.
         # -------------------------------------------------------------
-        self._embeddings = OpenAIEmbeddings()
-
+        self._vector_store_service = VectorStoreService()
+        
         # -------------------------------------------------------------
-        # These components are created only after a document upload.
+        # Created after a document has been uploaded.
         # -------------------------------------------------------------
-        self._vector_store: Chroma | None = None
+        self._vector_store = None
         self._retriever = None
         self._rag_chain = None
 
@@ -104,11 +96,24 @@ class RAGService:
 
         self._logger.info(f"Initializing RAG from '{file_path}'")
 
-        chunked_documents =self._document_service.load_and_split(file_path)
+        chunked_documents =self._document_service.load_and_split(
+            file_path
+            )
 
-        self._create_vector_store(chunked_documents)
+        # Delegate vector database creation to the dedicated service.
 
-        self._create_retriever()
+        self._vector_store = (
+            self._vector_store_service.create_vector_store(
+                chunked_documents
+                )
+                )
+
+        # Configure semantic retrieval.
+        self._retriever = (
+            self._vector_store_service.create_retriever(
+                self._vector_store
+                )
+                )
 
         self._rag_chain = self._build_chain()
 
@@ -130,40 +135,6 @@ class RAGService:
     # ================================================================
     # Private Helper Methods
     # ================================================================
-
-    def _create_vector_store(
-        self,
-        chunked_documents: list,
-    ) -> None:
-        """
-        Generate embeddings and store them inside Chroma.
-        """
-
-        self._vector_store = Chroma.from_documents(
-            documents=chunked_documents,
-            embedding=self._embeddings,
-            persist_directory=self._persist_directory,
-        )
-
-    def _create_retriever(self) -> None:
-        """
-        Configure Maximum Marginal Relevance (MMR) retrieval.
-
-        MMR reduces duplicate chunks while maintaining relevance.
-        """
-
-        if self._vector_store is None:
-            raise ValueError(
-                "Vector store has not been initialized."
-            )
-
-        self._retriever = self._vector_store.as_retriever(
-            search_type="mmr",
-            search_kwargs={
-                "k": DEFAULT_RETRIEVAL_K,
-                "fetch_k": DEFAULT_FETCH_K,
-            },
-        )
 
     def _format_documents(
         self,
@@ -220,3 +191,4 @@ class RAGService:
             | self._llm
             | StrOutputParser()
         )
+    
