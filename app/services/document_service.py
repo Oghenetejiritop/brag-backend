@@ -1,8 +1,19 @@
 from pathlib import Path
 
-from langchain_community.document_loaders import PyPDFLoader
+from typing import (
+    Any,
+    Callable
+    )
+
+from langchain_community.document_loaders import (
+    PyPDFLoader
+    )
+
 from langchain_core.documents import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+from langchain_text_splitters import (
+    RecursiveCharacterTextSplitter
+    )
 
 from app.core.config import (
     DEFAULT_CHUNK_SIZE,
@@ -26,7 +37,7 @@ class DocumentService:
     def load_and_split(
         self,
         file_path: str,
-    ) -> Document:
+    ) -> list[Document]:
         """
         Load a document and split it into semantic chunks.
 
@@ -40,9 +51,10 @@ class DocumentService:
 
         # Currently BRAG supports PDF ingestion.
         # Future versions will dynamically choose the appropriate
-# loader based on the uploaded file extension.
+        # loader based on the uploaded file extension.
 
-        documents = self._select_loader(file_path)
+        document_loader = self._select_loader(Path(file_path))
+        documents = document_loader.load()
 
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=DEFAULT_CHUNK_SIZE,
@@ -51,13 +63,49 @@ class DocumentService:
 
         return splitter.split_documents(documents)
 
-    def _select_loader(self, file_path: str):
+    def _select_loader(
+        self,
+        document_path: Path,
+    ) -> Any:
         """
-        Helps with multiple document loaders (PDF, DOCX, URL, and so on)
+        Select the appropriate LangChain document loader.
+
+        Currently BRAG supports PDF documents.
+
+        Future versions will support additional loaders for
+        TXT, DOCX, Markdown, HTML, and web pages without
+        changing the document processing workflow.
+
+        Args:
+            document_path:
+                Path to the uploaded document.
+
+        Returns:
+            A configured LangChain document loader.
+
+        Raises:
+            ValueError:
+                If the document type is unsupported.
         """
-        document_path = Path(file_path)
 
-        loader = PyPDFLoader(str(document_path))
+        extension = document_path.suffix.lower()
+        extension_loaders = self._get_supported_extension_loaders()
 
-        return loader.load()
+        if extension not in  extension_loaders:
+            raise ValueError(
+            f"Unsupported document type: {extension}"
+        )
 
+        return extension_loaders[extension](str(document_path))
+
+    def _get_supported_extension_loaders(
+            self
+            ) -> dict[str, Callable]:
+        """
+        Retreive all BRAG supported extensions alongside their loaders
+        """
+
+        return {
+            ".pdf": PyPDFLoader,
+        }
+    
