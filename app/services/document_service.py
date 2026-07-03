@@ -42,11 +42,7 @@ class DocumentService:
         # Future versions will dynamically choose the appropriate
 # loader based on the uploaded file extension.
 
-        document_path = Path(file_path)
-
-        loader = PyPDFLoader(str(document_path))
-
-        documents = loader.load()
+        documents = self._select_loader(file_path)
 
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=DEFAULT_CHUNK_SIZE,
@@ -54,3 +50,14 @@ class DocumentService:
         )
 
         return splitter.split_documents(documents)
+
+    def _select_loader(self, file_path: str):
+        """
+        Helps with multiple document loaders (PDF, DOCX, URL, and so on)
+        """
+        document_path = Path(file_path)
+
+        loader = PyPDFLoader(str(document_path))
+
+        return loader.load()
+
