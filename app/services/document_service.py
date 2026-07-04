@@ -16,8 +16,8 @@ from langchain_text_splitters import (
     )
 
 from app.core.config import (
-    DEFAULT_CHUNK_SIZE,
     DEFAULT_CHUNK_OVERLAP,
+    DEFAULT_CHUNK_SIZE,
 )
 
 
