@@ -13,6 +13,7 @@ from app.api.schemas import (
     )
 
 from app.dependencies import (
+    model_service,
     rag_manager,
     upload_service
     )
@@ -46,6 +47,19 @@ def health():
     return {
         "status": "healthy"
     }
+
+
+@router.get("/models")
+def get_models():
+    """
+    Retrieve the language models currently supported by BRAG.
+
+    Returns:
+        Information about the default language model and the
+        complete list of available models.
+    """
+
+    return model_service.get_models()
 
 
 @router.post("/query", response_model=QueryResponse)

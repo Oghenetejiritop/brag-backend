@@ -1,4 +1,5 @@
 
+from app.services.model_service import ModelService
 from app.services.rag_service import RAGService
 from app.services.upload_service import UploadService
 
@@ -26,6 +27,7 @@ class RAGManager:
     def has_service(self) -> bool:
         return self._rag_service is not None
 
-
+# Expose services
+model_service = ModelService()
 rag_manager = RAGManager()
 upload_service = UploadService()
