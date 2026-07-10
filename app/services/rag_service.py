@@ -102,7 +102,7 @@ class RAGService:
 
         self._logger.info(f"Initializing RAG from '{file_path}'")
 
-        chunked_documents =self._document_service.load_and_split(
+        chunked_documents = self._document_service.load_and_split(
             file_path
             )
 
@@ -111,9 +111,8 @@ class RAGService:
         # Each user owns an independent Chroma database.
         # -------------------------------------------------------------
         vector_store_directory = (
-            self._workspace_service.get_vector_store_directory(str(
+            self._workspace_service.get_vector_store_directory(
                 user_id
-            )
             )
         )
 

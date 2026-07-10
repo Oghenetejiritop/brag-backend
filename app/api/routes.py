@@ -1,12 +1,14 @@
 
 from fastapi import (
     APIRouter,
+    Depends,
     File,
     Header,
     HTTPException,
     UploadFile
     )
 
+from app.api.dependencies import get_user_context
 from app.api.schemas import (
     QueryRequest,
     QueryResponse
@@ -22,6 +24,8 @@ from app.exceptions.upload_exceptions import (
     EmptyFilenameError,
     UnsupportedDocumentTypeError,
 )
+
+from app.models.user_context import UserContext
 
 
 router = APIRouter()
@@ -65,24 +69,21 @@ def get_models():
 @router.post("/query", response_model=QueryResponse)
 def query(
     request: QueryRequest,
-    user_id: str = Header(
-        ...,
-        alias="X-User-ID",
-    ),
+    user_context: UserContext = Depends(get_user_context),
     ):
 
     # Reserved for Phase 4.3.
     # The active RAG service will be selected using the user ID.
     # -----------------------------------------------------------------
 
-    if not rag_manager.has_service(user_id):
+    if not rag_manager.has_service(user_context.user_id):
         raise HTTPException(
             status_code=400,
             detail="No document uploaded. Please upload a file first."
         )
 
     answer = rag_manager.get_service(
-        user_id=user_id,
+        user_id=user_context.user_id,
     ).answer_question(
         request.question
     )
@@ -93,10 +94,7 @@ def query(
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...),
-    user_id: str = Header(
-        ...,
-        alias="X-User-ID",
-    ),
+    user_context: UserContext = Depends(get_user_context),
     ):
     """
     Upload a document for the specified user and initialize
@@ -113,13 +111,13 @@ async def upload_file(
         # Save the uploaded document.
         file_path = await upload_service.save_file(
             file=file,
-    user_id=user_id,
+    user_id=user_context.user_id,
             )
 
         # Initialize the RAG pipeline using the saved document.
         rag_manager.initialize_from_file(
             file_path=file_path,
-            user_id=user_id,
+            user_id=user_context.user_id,
             )
 
     except UnsupportedDocumentTypeError as error:

@@ -33,7 +33,7 @@ class VectorStoreService:
                 will be stored.
         """
 
-        self._persist_directory = persist_directory
+        self._persist_directory = str(persist_directory)
 
         # ---------------------------------------------------------
         # Shared embedding model used for vector generation.

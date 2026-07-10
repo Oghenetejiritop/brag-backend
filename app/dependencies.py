@@ -38,7 +38,6 @@ class RAGManager:
 
                             user_id:
                 Temporary user identifier.
-
         """
 
         rag_service = RAGService()
