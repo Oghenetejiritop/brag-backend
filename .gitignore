@@ -4,13 +4,18 @@ __pycache__/
 *$py.class
 
 *.pyc
+# Chroma vector databases
 chroma_db/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# other files and folders
+uploads/
+workspaces/
 *.bat
 *.cmd
-*.docx
-*.html
-*.pdf
-*.txt
 
 # C extensions
 *.so

@@ -15,7 +15,7 @@ It prepares BRAG for:
 # numbers" throughout the codebase.
 # =============================================================================
 
-DEFAULT_CHUNK_SIZE = 1000
+DEFAULT_CHUNK_SIZE = 500
 DEFAULT_CHUNK_OVERLAP = 150
 
 DEFAULT_RETRIEVAL_K = 4
