@@ -112,14 +112,14 @@ async def upload_file(
     try:
         # Save the uploaded document.
         file_path = await upload_service.save_file(
-    user_id=user_id,
             file=file,
+    user_id=user_id,
             )
 
         # Initialize the RAG pipeline using the saved document.
         rag_manager.initialize_from_file(
+            file_path=file_path,
             user_id=user_id,
-            file_path=file_path
             )
 
     except UnsupportedDocumentTypeError as error:

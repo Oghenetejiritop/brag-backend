@@ -13,7 +13,7 @@ Thumbs.db
 
 # other files and folders
 uploads/
-workspaces/
+storage/
 *.bat
 *.cmd
 

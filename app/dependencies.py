@@ -26,23 +26,27 @@ class RAGManager:
 
     def initialize_from_file(
         self,
-        user_id: str,
         file_path: str,
+        user_id: str
     ) -> None:
         """
         Create or replace the user's active RAG service.
 
         Args:
-            user_id:
-                Temporary user identifier.
-
             file_path:
                 Uploaded document path.
+
+                            user_id:
+                Temporary user identifier.
+
         """
 
         rag_service = RAGService()
 
-        rag_service.initialize_from_file(file_path)
+        rag_service.initialize_from_file(
+            file_path=file_path,
+            user_id=user_id
+            )
 
         self._services[user_id] = rag_service
 

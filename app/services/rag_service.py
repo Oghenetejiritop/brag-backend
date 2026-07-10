@@ -23,7 +23,9 @@ from app.core.config import (
 from app.core.logger import get_logger
 
 from app.services.document_service import DocumentService
+from app.services.workspace_service import WorkspaceService
 from app.services.vector_store_service import VectorStoreService
+
 
 class RAGService:
     """
@@ -48,15 +50,15 @@ class RAGService:
         self._logger = get_logger("rag_service")
 
         # -------------------------------------------------------------
+        # Responsible for resolving user-specific workspace paths.
+        # -------------------------------------------------------------
+        self._workspace_service = WorkspaceService()
+
+        # -------------------------------------------------------------
         # Service responsible for document loading and preprocessing.
         # -------------------------------------------------------------
         self._document_service = DocumentService()
 
-        # -------------------------------------------------------------
-        # Service responsible for vector database creation and
-        # retrieval configuration.
-        # -------------------------------------------------------------
-        self._vector_store_service = VectorStoreService()
         
         # -------------------------------------------------------------
         # Created after a document has been uploaded.
@@ -76,7 +78,11 @@ class RAGService:
     # Public Methods
     # ================================================================
 
-    def initialize_from_file(self, file_path: str) -> None:
+    def initialize_from_file(
+            self,
+            file_path: str,
+            user_id: str,
+            ) -> None:
         """
         Initialize the complete RAG pipeline from a document.
 
@@ -100,17 +106,35 @@ class RAGService:
             file_path
             )
 
+        # -------------------------------------------------------------
+        # Resolve the vector store location for the active user.
+        # Each user owns an independent Chroma database.
+        # -------------------------------------------------------------
+        vector_store_directory = (
+            self._workspace_service.get_vector_store_directory(str(
+                user_id
+            )
+            )
+        )
+
+        # -------------------------------------------------------------
+        # Create a vector store service configured for the active user.
+        # -------------------------------------------------------------
+        vector_store_service = VectorStoreService(
+            persist_directory=vector_store_directory,
+        )
+
         # Delegate vector database creation to the dedicated service.
 
         self._vector_store = (
-            self._vector_store_service.create_vector_store(
+            vector_store_service.create_vector_store(
                 chunked_documents
                 )
                 )
 
         # Configure semantic retrieval.
         self._retriever = (
-            self._vector_store_service.create_retriever(
+            vector_store_service.create_retriever(
                 self._vector_store
                 )
                 )

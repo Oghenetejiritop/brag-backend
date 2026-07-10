@@ -102,10 +102,7 @@ class WorkspaceService:
             Path to the user's vector store directory.
         """
 
-        vector_store = (
-            self.get_user_workspace(user_id)
-            / "vector_store"
-        )
+        vector_store = self.get_user_workspace(user_id) / "vector_store"
 
         vector_store.mkdir(
             parents=True,

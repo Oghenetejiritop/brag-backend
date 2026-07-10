@@ -1,3 +1,4 @@
+
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
 from langchain_openai import OpenAIEmbeddings
@@ -5,7 +6,7 @@ from langchain_openai import OpenAIEmbeddings
 from app.core.config import (
     DEFAULT_FETCH_K,
     DEFAULT_RETRIEVAL_K,
-    DEFAULT_VECTOR_STORE_PATH
+    #DEFAULT_VECTOR_STORE_PATH
 )
 
 
@@ -17,29 +18,26 @@ class VectorStoreService:
         - Generate embeddings.
         - Build the Chroma vector store.
         - Configure semantic retrieval.
-
-    This service deliberately does not interact with the LLM or
-    prompt templates. Its sole purpose is managing vector storage.
     """
 
     def __init__(
         self,
-        persist_directory: str = DEFAULT_VECTOR_STORE_PATH,
+        persist_directory: str,
     ) -> None:
         """
         Initialize the vector store service.
 
         Args:
             persist_directory:
-                Directory used to persist the Chroma database.
+                Directory where the user's Chroma database
+                will be stored.
         """
 
         self._persist_directory = persist_directory
 
-        # -------------------------------------------------------------
-        # OpenAI embedding model used to convert document chunks into
-        # dense vector representations.
-        # -------------------------------------------------------------
+        # ---------------------------------------------------------
+        # Shared embedding model used for vector generation.
+        # ---------------------------------------------------------
         self._embeddings = OpenAIEmbeddings()
 
     def create_vector_store(
