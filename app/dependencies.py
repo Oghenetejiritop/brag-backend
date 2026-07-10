@@ -3,29 +3,78 @@ from app.services.model_service import ModelService
 from app.services.rag_service import RAGService
 from app.services.upload_service import UploadService
 
+
 class RAGManager:
     """
-    Manages the active RAG service instance.
+    Manages active RAG service instances.
 
-    During Phase 3 there is only one active knowledge base.
+    During Phase 4, each user receives an independent RAGService.
 
-    Later this manager will evolve to support multiple users,
-    each with their own RAG service.
+    This prevents users from sharing vector stores,
+    retrievers, and chat pipelines.
     """
 
-    def __init__(self):
-        self._rag_service: RAGService | None = RAGService()
+    def __init__(self) -> None:
+        """
+        Initialize the RAG manager.
+        """
 
-    def initialize_from_file(self, file_path: str):
-        self._rag_service.initialize_from_file(file_path)
+        # -------------------------------------------------------------
+        # Maps a user ID to that user's active RAGService.
+        # -------------------------------------------------------------
+        self._services: dict[str, RAGService] = {}
 
-    def get_service(self) -> RAGService:
-        if not self._rag_service:
-            raise ValueError("RAG service not initialized")
-        return self._rag_service
+    def initialize_from_file(
+        self,
+        user_id: str,
+        file_path: str,
+    ) -> None:
+        """
+        Create or replace the user's active RAG service.
 
-    def has_service(self) -> bool:
-        return self._rag_service is not None
+        Args:
+            user_id:
+                Temporary user identifier.
+
+            file_path:
+                Uploaded document path.
+        """
+
+        rag_service = RAGService()
+
+        rag_service.initialize_from_file(file_path)
+
+        self._services[user_id] = rag_service
+
+    def get_service(
+        self,
+        user_id: str,
+    ) -> RAGService:
+        """
+        Retrieve the active RAG service for a user.
+
+        Raises:
+            ValueError:
+                If the user has not uploaded a document.
+        """
+
+        if user_id not in self._services:
+            raise ValueError(
+                "No RAG service initialized for this user."
+            )
+
+        return self._services[user_id]
+
+    def has_service(
+        self,
+        user_id: str,
+    ) -> bool:
+        """
+        Determine whether the user has an active RAG service.
+        """
+
+        return user_id in self._services
+
 
 # Expose services
 model_service = ModelService()

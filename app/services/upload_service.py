@@ -10,6 +10,8 @@ from app.exceptions.upload_exceptions import (
     UnsupportedDocumentTypeError,
 )
 
+from app.services.workspace_service import WorkspaceService
+
 
 class UploadService:
     """
@@ -28,26 +30,14 @@ class UploadService:
         - Duplicate detection.
     """
 
-    def __init__(self, upload_directory: str = "uploads") -> None:
+    def __init__(self) -> None:
         """
         Initialize the upload service.
 
-        Args:
-            upload_directory:
-                Directory where uploaded files will be stored.
+        Workspace management is delegated to WorkspaceService.
         """
 
-        self._upload_directory = Path(upload_directory)
-
-        # -------------------------------------------------------------
-        # Ensure the upload directory exists.
-        # This allows BRAG to start cleanly even on a new machine.
-        # -------------------------------------------------------------
-        self._upload_directory.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
+        self._workspace_service = WorkspaceService()
 
     def _validate_file_type(
         self,
@@ -101,13 +91,17 @@ class UploadService:
 
     async def save_file(
         self,
+        user_id: str,
         file: UploadFile,
     ) -> str:
         """
         Save an uploaded file to disk.
 
         Args:
-            file:
+        user_id:
+        Identifier of the active user.
+
+                    file:
                 Uploaded file received by FastAPI.
 
             Raises:
@@ -128,24 +122,21 @@ class UploadService:
         # -------------------------------------------------------------
         self._validate_file_type(file)
 
-        # Ensure the upload directory exists if deleted.
-        self._upload_directory.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
-
-        # -------------------------------------------------------------
         # Generate a unique filename to avoid overwriting existing
         # documents that share the same original name.
-        # -------------------------------------------------------------
         unique_filename = self._generate_unique_filename(file.filename)
 
-        file_path = self._upload_directory / unique_filename
+        # Retrieve the user's dedicated upload directory.
+        # WorkspaceService ensures the directory exists.
+        upload_directory = self._workspace_service.get_upload_directory(
+            user_id
+        )
+
+        file_path = upload_directory / unique_filename
 
         # -------------------------------------------------------------
         # Read the uploaded file and persist it.
         # Using Path keeps the implementation platform-independent.
-        # -------------------------------------------------------------
         contents = await file.read()
 
         with file_path.open("wb") as destination:
