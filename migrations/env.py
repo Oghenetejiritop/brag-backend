@@ -8,6 +8,10 @@ from alembic import context
 from app.core.config import DATABASE_URL
 from app.db.database import Base
 
+# Import ORM models before Alembic reads Base.metadata.
+# Without this import, model tables may be absent from autogeneration.
+from app.db import models  # noqa: F401
+
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
