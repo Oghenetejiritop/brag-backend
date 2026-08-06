@@ -7,7 +7,11 @@ and the declarative base used by future ORM models.
 
 from collections.abc import Generator
 
-from sqlalchemy import create_engine
+from sqlalchemy import (
+    create_engine,
+    event,
+    )
+
 from sqlalchemy.orm import (
     DeclarativeBase,
     Session,
@@ -31,6 +35,30 @@ engine = create_engine(
     DATABASE_URL,
     connect_args=SQLITE_CONNECT_ARGS,
 )
+
+# SQLite does not enforce foreign-key constraints by default.
+# Enable them for every SQLAlchemy-managed database connection
+# so API-key records cannot reference users that do not exist.
+@event.listens_for(engine, "connect")
+def enable_sqlite_foreign_keys(
+    database_connection,
+    connection_record,
+) -> None:
+    """
+    Enable relational foreign-key enforcement for SQLite.
+
+    The connection_record argument is required by SQLAlchemy's
+    connection event interface but is not needed by this function.
+    """
+
+    del connection_record
+
+    cursor = database_connection.cursor()
+
+    try:
+        cursor.execute("PRAGMA foreign_keys=ON")
+    finally:
+        cursor.close()
 
 
 # The session factory creates independent database sessions. Each request

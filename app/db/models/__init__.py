@@ -1,13 +1,15 @@
 """
 BRAG SQLAlchemy ORM models.
 
-Models are imported here so Alembic can discover them through
-the shared Base.metadata collection.
+Importing models here ensures their tables are registered in the
+shared Base.metadata collection before Alembic autogeneration runs.
 """
 
+from app.db.models.api_key import APIKey
 from app.db.models.user import User
 
 
 __all__ = [
+    "APIKey",
     "User",
 ]

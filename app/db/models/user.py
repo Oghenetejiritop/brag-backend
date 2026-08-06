@@ -5,7 +5,11 @@ The User model represents the account that owns API keys,
 documents, vector stores, chatbots, and future subscriptions.
 """
 
+from __future__ import annotations
+
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy import (
@@ -18,10 +22,14 @@ from sqlalchemy import (
 from sqlalchemy.orm import (
     Mapped,
     mapped_column,
+    relationship,
 )
 
 from app.db.database import Base
 
+
+if TYPE_CHECKING:
+    from app.db.models.api_key import APIKey
 
 class User(Base):
     """
@@ -64,6 +72,13 @@ class User(Base):
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
+    )
+
+    # A user may own multiple API keys for separate integrations,
+    # environments, or future key-rotation workflows.
+    api_keys: Mapped[list[APIKey]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:
