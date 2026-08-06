@@ -61,3 +61,13 @@ SUPPORTED_DOCUMENT_EXTENSIONS = {
     ".pdf",
 }
 
+
+# =============================================================================
+# Relational Database Configuration
+# =============================================================================
+
+# SQLite is used during local development because it requires no separate
+# database server. SQLAlchemy allows this URL to be replaced with PostgreSQL
+# or MySQL configuration during a future production migration.
+DATABASE_URL = "sqlite:///./brag.db"
+

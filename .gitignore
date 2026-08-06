@@ -12,10 +12,13 @@ chroma_db/
 Thumbs.db
 
 # other files and folders
-uploads/
 storage/
+uploads/
 *.bat
 *.cmd
+*.db
+*.sqlite
+*.sqlite3
 
 # C extensions
 *.so
