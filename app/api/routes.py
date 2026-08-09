@@ -3,9 +3,8 @@ from fastapi import (
     APIRouter,
     Depends,
     File,
-    Header,
     HTTPException,
-    UploadFile
+    UploadFile,
     )
 
 from app.api.dependencies import get_user_context
@@ -66,20 +65,27 @@ def get_models():
     return model_service.get_models()
 
 
-@router.post("/query", response_model=QueryResponse)
+@router.post(
+        "/query",
+        response_model=QueryResponse
+        )
 def query(
     request: QueryRequest,
     user_context: UserContext = Depends(get_user_context),
     ):
+    """
+    Query the authenticated user's RAG knowledge base.
+    """
 
-    # Reserved for Phase 4.3.
-    # The active RAG service will be selected using the user ID.
-    # -----------------------------------------------------------------
-
-    if not rag_manager.has_service(user_context.user_id):
+    if not rag_manager.has_service(
+        user_context.user_id
+    ):
         raise HTTPException(
             status_code=400,
-            detail="No document uploaded. Please upload a file first."
+            detail=(
+                "No document uploaded. "
+                "Please upload a file first."
+            ),
         )
 
     answer = rag_manager.get_service(
@@ -88,7 +94,9 @@ def query(
         request.question
     )
 
-    return QueryResponse(answer=answer)
+    return QueryResponse(
+        answer=answer
+    )
 
 
 @router.post("/upload")
@@ -97,14 +105,11 @@ async def upload_file(
     user_context: UserContext = Depends(get_user_context),
     ):
     """
-    Upload a document for the specified user and initialize
-    that user's active RAG pipeline.
+    Upload a document for the authenticated user and
+    initialize that user's RAG pipeline.
 
-        During Phase 4, the user is identified through the
-        temporary X-User-ID request header.
-
-            Future phases will replace this mechanism with API-key
-        authentication.
+    The active user is resolved from the BRAG API key supplied
+    through the Authorization Bearer header.
     """
 
     try:

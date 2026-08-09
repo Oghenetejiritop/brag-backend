@@ -1,35 +1,104 @@
-from fastapi import (
-    Header,
-    HTTPException,
-)
 
+"""
+FastAPI dependencies used by BRAG API routes.
+
+Authentication is centralized here so route handlers receive
+an authenticated UserContext instead of handling credentials
+directly.
+"""
+
+from fastapi import (
+    Depends,
+    HTTPException,
+    Security,
+    status,
+)
+from fastapi.security import (
+    HTTPAuthorizationCredentials,
+    HTTPBearer,
+)
+from sqlalchemy.orm import Session
+
+from app.db.database import get_database_session
+from app.exceptions.auth_exceptions import AuthenticationError
 from app.models.user_context import UserContext
+from app.services.authentication_service import AuthenticationService
+
+
+# -----------------------------------------------------------------
+# Register HTTP Bearer authentication with FastAPI/OpenAPI.
+#
+# auto_error=False lets BRAG return one consistent authentication
+# response for missing, invalid, revoked, or inactive credentials.
+# -----------------------------------------------------------------
+bearer_scheme = HTTPBearer(
+    auto_error=False,
+)
 
 
 def get_user_context(
-    x_user_id: str = Header(..., alias="X-User-ID"),
+    credentials: HTTPAuthorizationCredentials | None = Security(
+        bearer_scheme
+    ),
+    database_session: Session = Depends(
+        get_database_session
+    ),
 ) -> UserContext:
     """
-    Build the active user context for the current request.
+    Authenticate the current request and build its UserContext.
 
-    During Phase 4, BRAG temporarily identifies users through
-    the X-User-ID request header.
+    Requests must supply a BRAG API key through:
 
-    Future phases will replace this implementation with API-key
-    authentication without changing the route handlers.
+        Authorization: Bearer <API_KEY>
+
+    Args:
+        credentials:
+            Bearer credentials extracted from the HTTP request.
+
+        database_session:
+            Request-scoped SQLAlchemy session.
+
+    Returns:
+        Authenticated UserContext containing the public user ID.
+
+    Raises:
+        HTTPException:
+            If authentication fails.
     """
 
-    # -------------------------------------------------------------
-    # Reject empty user identifiers.
-    # -------------------------------------------------------------
-    user_id = x_user_id.strip()
-
-    if not user_id:
+    if credentials is None:
         raise HTTPException(
-            status_code=400,
-            detail="X-User-ID header cannot be empty.",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication credentials are required.",
+            headers={
+                "WWW-Authenticate": "Bearer",
+            },
+        )
+
+    authentication_service = AuthenticationService(
+        database_session=database_session
+    )
+
+    try:
+        user = authentication_service.authenticate(
+            credentials.credentials
+        )
+
+    except AuthenticationError:
+        # ---------------------------------------------------------
+        # Return one generic response for authentication failures.
+        #
+        # We deliberately avoid revealing whether a credential
+        # exists, was revoked, or belongs to an inactive user.
+        # ---------------------------------------------------------
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or inactive API key.",
+            headers={
+                "WWW-Authenticate": "Bearer",
+            },
         )
 
     return UserContext(
-        user_id=user_id,
+        user_id=user.user_id
     )

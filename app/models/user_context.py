@@ -1,18 +1,17 @@
+
 from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
 class UserContext:
     """
-    Represents the active user making a request.
+    Represents the authenticated BRAG user for a request.
 
-    During Phase 4, BRAG uses a temporary user identifier
-    supplied through the X-User-ID request header.
+    The user_id is the public UUID resolved after successful
+    API-key authentication.
 
-    Future phases will replace this identifier with API-key
-    authentication while keeping the remainder of the
-    application unchanged.
+    Services use this context instead of accessing credentials
+    or HTTP headers directly.
     """
 
     user_id: str
-
