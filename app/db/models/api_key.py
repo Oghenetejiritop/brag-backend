@@ -1,3 +1,4 @@
+
 """
 Persistent API-key model for BRAG.
 
@@ -113,3 +114,4 @@ class APIKey(Base):
             f"key_prefix={self.key_prefix!r}, "
             f"is_active={self.is_active!r})"
         )
+

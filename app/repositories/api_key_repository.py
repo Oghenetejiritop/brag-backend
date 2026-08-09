@@ -46,7 +46,7 @@ class APIKeyRepository:
         Create and persist an API-key record.
 
         Args:
-            user_id:
+            user_db_id:
                 Internal database ID of the key owner.
 
             key_prefix:
