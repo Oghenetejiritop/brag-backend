@@ -1,17 +1,22 @@
+
+"""
+Filesystem workspace management for BRAG users.
+
+Each authenticated BRAG user receives an isolated workspace
+containing uploaded documents and vector-store data.
+"""
+
 from pathlib import Path
+from uuid import UUID
 
 
 class WorkspaceService:
     """
-    Manages per-user workspace directories.
+    Manages isolated filesystem workspaces for BRAG users.
 
-    Responsibilities:
-        - Create a workspace for each user.
-        - Provide paths for uploads.
-        - Provide paths for vector stores.
-
-    This service centralizes filesystem layout so that other
-    services remain independent of directory structure.
+    User identifiers are validated as UUIDs before they are used
+    in filesystem paths. This prevents client-controlled or
+    malformed identifiers from escaping the storage root.
     """
 
     def __init__(
@@ -23,14 +28,13 @@ class WorkspaceService:
 
         Args:
             storage_directory:
-                Root directory that stores all user workspaces.
+                Root directory containing all user workspaces.
         """
 
-        self._storage_directory = Path(storage_directory)
+        self._storage_directory = Path(
+            storage_directory
+        )
 
-        # -------------------------------------------------------------
-        # Ensure the root storage directory exists.
-        # -------------------------------------------------------------
         self._storage_directory.mkdir(
             parents=True,
             exist_ok=True,
@@ -41,20 +45,47 @@ class WorkspaceService:
         user_id: str,
     ) -> Path:
         """
-        Return the root workspace directory for a user.
-
-        The directory is created automatically if it does not
-        already exist.
+        Return the isolated workspace for a BRAG user.
 
         Args:
             user_id:
-                Temporary user identifier.
+                Public UUID belonging to the authenticated user.
 
         Returns:
             Path to the user's workspace.
+
+        Raises:
+            ValueError:
+                If the supplied user identifier is not a valid UUID
+                or would resolve outside the configured storage root.
         """
 
-        workspace = self._storage_directory / user_id
+        normalized_user_id = self._normalize_user_id(
+            user_id
+        )
+
+        storage_root = (
+            self._storage_directory.resolve()
+        )
+
+        workspace = (
+            storage_root / normalized_user_id
+        ).resolve()
+
+        # ---------------------------------------------------------
+        # Defense in depth:
+        #
+        # UUID validation already prevents traversal characters,
+        # but the containment check protects this filesystem
+        # boundary if identifier rules change in the future.
+        # ---------------------------------------------------------
+        if not workspace.is_relative_to(
+            storage_root
+        ):
+            raise ValueError(
+                "User workspace must remain inside "
+                "the configured storage directory."
+            )
 
         workspace.mkdir(
             parents=True,
@@ -68,17 +99,13 @@ class WorkspaceService:
         user_id: str,
     ) -> Path:
         """
-        Return the uploads directory for a user.
-
-        Args:
-            user_id:
-                Temporary user identifier.
-
-        Returns:
-            Path to the user's uploads directory.
+        Return the authenticated user's upload directory.
         """
 
-        uploads = self.get_user_workspace(user_id) / "uploads"
+        uploads = (
+            self.get_user_workspace(user_id)
+            / "uploads"
+        )
 
         uploads.mkdir(
             parents=True,
@@ -92,17 +119,13 @@ class WorkspaceService:
         user_id: str,
     ) -> Path:
         """
-        Return the vector store directory for a user.
-
-        Args:
-            user_id:
-                Temporary user identifier.
-
-        Returns:
-            Path to the user's vector store directory.
+        Return the authenticated user's vector-store directory.
         """
 
-        vector_store = self.get_user_workspace(user_id) / "vector_store"
+        vector_store = (
+            self.get_user_workspace(user_id)
+            / "vector_store"
+        )
 
         vector_store.mkdir(
             parents=True,
@@ -110,3 +133,44 @@ class WorkspaceService:
         )
 
         return vector_store
+
+    @staticmethod
+    def _normalize_user_id(
+        user_id: str,
+    ) -> str:
+        """
+        Validate and normalize a BRAG public user identifier.
+
+        Args:
+            user_id:
+                User identifier to validate.
+
+        Returns:
+            Canonical UUID string.
+
+        Raises:
+            ValueError:
+                If the identifier is empty or is not a valid UUID.
+        """
+
+        if not isinstance(user_id, str):
+            raise ValueError(
+                "User ID must be a valid UUID string."
+            )
+
+        candidate = user_id.strip()
+
+        if not candidate:
+            raise ValueError(
+                "User ID must be a valid UUID string."
+            )
+
+        try:
+            parsed_user_id = UUID(candidate)
+
+        except ValueError:
+            raise ValueError(
+                "User ID must be a valid UUID string."
+            ) from None
+
+        return str(parsed_user_id)
