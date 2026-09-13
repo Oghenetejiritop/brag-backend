@@ -6,17 +6,16 @@ from langchain_openai import OpenAIEmbeddings
 from app.core.config import (
     DEFAULT_FETCH_K,
     DEFAULT_RETRIEVAL_K,
-    #DEFAULT_VECTOR_STORE_PATH
 )
 
 
 class VectorStoreService:
     """
-    Handles vector database creation and retrieval configuration.
+    Manage vector-store creation and retrieval configuration.
 
     Responsibilities:
-        - Generate embeddings.
-        - Build the Chroma vector store.
+        - Generate document embeddings.
+        - Create persistent Chroma vector stores.
         - Configure semantic retrieval.
     """
 
@@ -25,19 +24,19 @@ class VectorStoreService:
         persist_directory: str,
     ) -> None:
         """
-        Initialize the vector store service.
+        Initialize the vector-store service.
 
         Args:
             persist_directory:
                 Directory where the user's Chroma database
-                will be stored.
+                will be persisted.
         """
 
-        self._persist_directory = str(persist_directory)
+        # Chroma expects the persistence location as a string.
+        self._persist_directory = str(
+            persist_directory
+        )
 
-        # ---------------------------------------------------------
-        # Shared embedding model used for vector generation.
-        # ---------------------------------------------------------
         self._embeddings = OpenAIEmbeddings()
 
     def create_vector_store(
@@ -45,14 +44,14 @@ class VectorStoreService:
         documents: list[Document],
     ) -> Chroma:
         """
-        Build a Chroma vector database from document chunks.
+        Create a persistent Chroma vector store.
 
         Args:
             documents:
-                Chunked LangChain documents.
+                Preprocessed LangChain document chunks.
 
         Returns:
-            Configured Chroma vector database.
+            Initialized Chroma vector store.
         """
 
         return Chroma.from_documents(
@@ -66,14 +65,14 @@ class VectorStoreService:
         vector_store: Chroma,
     ):
         """
-        Configure a Maximum Marginal Relevance (MMR) retriever.
+        Create an MMR retriever for a vector store.
 
-        MMR balances relevance while reducing duplicate document
-        chunks in the retrieval results.
+        Maximum Marginal Relevance balances relevance with
+        diversity to reduce repetitive retrieved chunks.
 
         Args:
             vector_store:
-                Initialized Chroma vector database.
+                Initialized Chroma vector store.
 
         Returns:
             Configured LangChain retriever.

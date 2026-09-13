@@ -10,13 +10,13 @@ from fastapi import (
 from app.api.dependencies import get_user_context
 from app.api.schemas import (
     QueryRequest,
-    QueryResponse
+    QueryResponse,
     )
 
 from app.dependencies import (
     model_service,
     rag_manager,
-    upload_service
+    upload_service,
     )
 
 from app.exceptions.upload_exceptions import (
@@ -116,8 +116,8 @@ async def upload_file(
         # Save the uploaded document.
         file_path = await upload_service.save_file(
             file=file,
-    user_id=user_context.user_id,
-            )
+            user_id=user_context.user_id,
+        )
 
         # Initialize the RAG pipeline using the saved document.
         rag_manager.initialize_from_file(
