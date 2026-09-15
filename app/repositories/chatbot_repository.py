@@ -189,3 +189,34 @@ class ChatbotRepository:
         return self._database_session.scalar(
             statement
         )
+
+    def deactivate(
+        self,
+        chatbot: Chatbot,
+    ) -> Chatbot:
+        """
+        Mark a chatbot as inactive without deleting it.
+
+        Args:
+            chatbot:
+                Persistent chatbot record to deactivate.
+
+        Returns:
+            Updated Chatbot record.
+        """
+
+        chatbot.is_active = False
+
+        try:
+            self._database_session.commit()
+            self._database_session.refresh(
+                chatbot
+            )
+
+        except Exception:
+            # Restore the session after a failed transaction so it
+            # remains usable by the application.
+            self._database_session.rollback()
+            raise
+
+        return chatbot
