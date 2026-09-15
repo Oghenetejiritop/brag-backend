@@ -30,6 +30,8 @@ from app.db.database import Base
 
 if TYPE_CHECKING:
     from app.db.models.api_key import APIKey
+    from app.db.models.chatbot import Chatbot
+
 
 class User(Base):
     """
@@ -77,6 +79,13 @@ class User(Base):
     # A user may own multiple API keys for separate integrations,
     # environments, or future key-rotation workflows.
     api_keys: Mapped[list[APIKey]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
+    # A user may own multiple independently addressable chatbots.
+    # Ownership is enforced through the Chatbot.user_id foreign key.
+    chatbots: Mapped[list["Chatbot"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
     )
