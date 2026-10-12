@@ -191,6 +191,46 @@ class RAGManager:
 
         return rag_service
 
+    def get_or_reconstruct_chatbot(
+        self,
+        user_id: str,
+        chatbot_id: str,
+    ) -> RAGService:
+        """
+        Return a cached chatbot RAG service or reconstruct it.
+
+        This method must only be called after the authenticated
+        user has passed chatbot ownership and active-status checks.
+
+        Args:
+            user_id:
+                Public UUID of the authenticated chatbot owner.
+            chatbot_id:
+                Public UUID of the authorized chatbot.
+
+        Returns:
+            A cached or newly reconstructed RAGService.
+
+        Raises:
+            FileNotFoundError:
+                If no persisted vector database exists.
+            ValueError:
+                If the persisted vector collection is empty.
+        """
+        if self.has_chatbot_service(
+            user_id=user_id,
+            chatbot_id=chatbot_id,
+        ):
+            return self.get_chatbot_service(
+                user_id=user_id,
+                chatbot_id=chatbot_id,
+            )
+
+        return self.reconstruct_chatbot(
+            user_id=user_id,
+            chatbot_id=chatbot_id,
+        )
+
     def has_chatbot_service(
         self,
         user_id: str,
