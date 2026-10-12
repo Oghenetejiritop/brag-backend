@@ -17,9 +17,12 @@ from fastapi.security import (
     HTTPAuthorizationCredentials,
     HTTPBearer,
 )
+
 from sqlalchemy.orm import Session
+from sqlalchemy import select
 
 from app.db.database import get_database_session
+from app.db.models.user import User
 from app.exceptions.auth_exceptions import AuthenticationError
 from app.models.user_context import UserContext
 from app.services.authentication_service import AuthenticationService
@@ -102,3 +105,34 @@ def get_user_context(
     return UserContext(
         user_id=user.user_id
     )
+
+def get_authenticated_user(
+    user_context: UserContext = Depends(get_user_context),
+    database_session: Session = Depends(get_database_session),
+) -> User:
+    """
+    Resolve the authenticated API-key owner to a database User.
+
+    The public user UUID comes exclusively from the verified
+    authentication dependency, never from client input.
+
+    Raises:
+        HTTPException:
+            401 if the user no longer exists or is inactive.
+    """
+    statement = select(User).where(
+        User.user_id == user_context.user_id
+    )
+
+    user = database_session.scalar(statement)
+
+    if user is None or not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication is no longer valid.",
+            headers={
+                "WWW-Authenticate": "Bearer",
+            },
+        )
+
+    return user
