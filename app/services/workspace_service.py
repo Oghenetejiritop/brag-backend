@@ -134,6 +134,104 @@ class WorkspaceService:
 
         return vector_store
 
+    def get_chatbot_workspace(
+        self,
+        user_id: str,
+        chatbot_id: str,
+    ) -> Path:
+        """
+        Return the isolated workspace for a user's chatbot.
+
+        Both identifiers must be valid UUIDs. The resulting path
+        must remain inside the authenticated user's workspace.
+
+        Args:
+            user_id:
+                Public UUID of the chatbot owner.
+            chatbot_id:
+                Public UUID of the chatbot.
+
+        Returns:
+            Absolute path to the chatbot workspace.
+
+        Raises:
+            ValueError:
+                If an identifier is invalid or the resolved path
+                escapes the user workspace.
+        """
+        user_workspace = self.get_user_workspace(user_id)
+
+        normalized_chatbot_id = self._normalize_user_id(
+            chatbot_id
+        )
+
+        chatbot_workspace = (
+            user_workspace
+            / "chatbots"
+            / normalized_chatbot_id
+        ).resolve()
+
+        # Keep chatbot files inside their owning user's
+        # filesystem boundary.
+        if not chatbot_workspace.is_relative_to(user_workspace):
+            raise ValueError(
+                "Chatbot workspace must remain inside "
+                "the user's workspace."
+            )
+
+        chatbot_workspace.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        return chatbot_workspace
+
+    def get_chatbot_upload_directory(
+        self,
+        user_id: str,
+        chatbot_id: str,
+    ) -> Path:
+        """
+        Return the upload directory for a specific chatbot.
+        """
+        upload_directory = (
+            self.get_chatbot_workspace(
+                user_id=user_id,
+                chatbot_id=chatbot_id,
+            )
+            / "uploads"
+        )
+
+        upload_directory.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        return upload_directory
+
+    def get_chatbot_vector_store_directory(
+        self,
+        user_id: str,
+        chatbot_id: str,
+    ) -> Path:
+        """
+        Return the persistent vector-store directory for a chatbot.
+        """
+        vector_store_directory = (
+            self.get_chatbot_workspace(
+                user_id=user_id,
+                chatbot_id=chatbot_id,
+            )
+            / "vector_store"
+        )
+
+        vector_store_directory.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        return vector_store_directory
+
     @staticmethod
     def _normalize_user_id(
         user_id: str,
