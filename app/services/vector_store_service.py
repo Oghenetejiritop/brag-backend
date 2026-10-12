@@ -1,3 +1,4 @@
+from pathlib import Path
 
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
@@ -59,6 +60,56 @@ class VectorStoreService:
             embedding=self._embeddings,
             persist_directory=self._persist_directory,
         )
+
+    def load_vector_store(self) -> Chroma:
+        """
+        Load an existing persistent Chroma vector store.
+
+        The method refuses to initialize a missing or empty
+        database. This prevents an uninitialized chatbot from
+        appearing ready after an application restart.
+
+        Returns:
+            Chroma:
+                Existing vector store containing document chunks.
+
+        Raises:
+            FileNotFoundError:
+                If no persisted Chroma database exists.
+
+            ValueError:
+                If the persisted collection contains no documents.
+
+        Notes:
+            Existing document embeddings are reused. Loading
+            does not reprocess or re-embed source documents.
+        """
+        persist_path = Path(self._persist_directory)
+
+        database_file = persist_path / "chroma.sqlite3"
+
+        # Opening a missing Chroma directory could create a new,
+        # empty database. Reject it before constructing Chroma.
+        if not database_file.is_file():
+            raise FileNotFoundError(
+                "No persisted Chroma database was found "
+                f"at: {persist_path}"
+            )
+
+        vector_store = Chroma(
+            persist_directory=self._persist_directory,
+            embedding_function=self._embeddings,
+        )
+
+        # An existing database file does not necessarily mean
+        # the expected collection contains document vectors.
+        if vector_store._collection.count() == 0:
+            raise ValueError(
+                "The persisted Chroma collection is empty."
+            )
+
+        return vector_store
+
 
     def create_retriever(
         self,
