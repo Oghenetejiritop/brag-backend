@@ -125,6 +125,75 @@ class RAGService:
             "RAG initialization completed successfully."
         )
 
+    def initialize_from_existing_store(
+        self,
+        user_id: str,
+        chatbot_id: str,
+    ) -> None:
+        """
+        Reconstruct a chatbot's RAG pipeline from persisted vectors.
+
+        The caller must have already verified that the chatbot
+        belongs to the authenticated user and is active.
+
+        Existing document embeddings are reused rather than
+        regenerated.
+
+        Args:
+            user_id:
+                Public UUID of the authenticated chatbot owner.
+            chatbot_id:
+                Public UUID of the chatbot to reconstruct.
+
+        Raises:
+            FileNotFoundError:
+                If the chatbot has no persisted vector database.
+            ValueError:
+                If the existing vector collection is empty.
+        """
+        vector_store_directory = (
+            self._workspace_service
+            .get_chatbot_vector_store_directory(
+                user_id=user_id,
+                chatbot_id=chatbot_id,
+            )
+        )
+
+        self._logger.info(
+            "Reconstructing RAG for chatbot '%s'",
+            chatbot_id,
+        )
+
+        vector_store_service = VectorStoreService(
+            persist_directory=str(vector_store_directory),
+        )
+
+        # Load existing vectors without reprocessing documents.
+        vector_store = vector_store_service.load_vector_store()
+
+        # Build the new retriever before updating instance state.
+        retriever = vector_store_service.create_retriever(
+            vector_store
+        )
+
+        self._vector_store = vector_store
+        self._retriever = retriever
+
+        try:
+            self._rag_chain = self._build_chain()
+        except Exception:
+            # Never leave a partially initialized pipeline
+            # available after reconstruction fails.
+            self._vector_store = None
+            self._retriever = None
+            self._rag_chain = None
+            raise
+
+        self._logger.info(
+            "RAG reconstruction completed for chatbot '%s'",
+            chatbot_id,
+        )
+
     def answer_question(
         self,
         question: str,
