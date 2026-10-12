@@ -147,4 +147,3 @@ async def upload_file(
         "message": "Document uploaded successfully.",
         "filename": file.filename,
     }
-

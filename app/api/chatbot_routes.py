@@ -6,11 +6,15 @@ All chatbot operations require an authenticated database user.
 Business rules and ownership checks are delegated to ChatbotService.
 """
 
+from pathlib import Path
+
 from fastapi import (
     APIRouter,
     Depends,
+    File,
     HTTPException,
-    status
+    status,
+    UploadFile,
     )
 
 from sqlalchemy.orm import Session
@@ -25,6 +29,11 @@ from app.db.database import get_database_session
 from app.db.models.user import User
 from app.services.chatbot_service import ChatbotService
 
+from app.dependencies import rag_manager, upload_service
+from app.exceptions.upload_exceptions import (
+    EmptyFilenameError,
+    UnsupportedDocumentTypeError,
+)
 
 router = APIRouter(
     prefix="/api/v1/chatbots",
@@ -122,3 +131,77 @@ def deactivate_chatbot(
     )
 
     return ChatbotResponse.model_validate(chatbot)
+
+
+
+
+@router.post(
+    "/{chatbot_id}/documents",
+    status_code=status.HTTP_201_CREATED,
+)
+async def upload_chatbot_document(
+    chatbot_id: str,
+    file: UploadFile = File(...),
+    user: User = Depends(get_authenticated_user),
+    chatbot_service: ChatbotService = Depends(get_chatbot_service),
+) -> dict[str, str]:
+    """
+    Upload and ingest a document for an owned, active chatbot.
+
+    Ownership is checked before any file is saved.
+    """
+
+    # Step 1: Verify chatbot ownership and active status.
+    chatbot = chatbot_service.get_chatbot(
+        user=user,
+        public_chatbot_id=chatbot_id,
+    )
+
+    # Use the authenticated user's public UUID and the
+    # canonical chatbot UUID returned from the database.
+    user_id = str(user.user_id)
+    authorized_chatbot_id = str(chatbot.chatbot_id)
+
+    # Step 2: Save the document to the chatbot workspace.
+    try:
+        file_path = await upload_service.save_chatbot_file(
+            user_id=user_id,
+            chatbot_id=authorized_chatbot_id,
+            file=file,
+        )
+
+    except (EmptyFilenameError, UnsupportedDocumentTypeError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        ) from error
+
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
+            if "10 MiB limit" in str(error)
+            else status.HTTP_400_BAD_REQUEST,
+            detail=str(error),
+        ) from error
+
+    # Step 3: Ingest into the chatbot's persistent vector store.
+    try:
+        rag_manager.initialize_chatbot_from_file(
+            file_path=file_path,
+            user_id=user_id,
+            chatbot_id=authorized_chatbot_id,
+        )
+
+    except (ValueError, FileNotFoundError) as error:
+        # A saved file is not proof of successful ingestion.
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="The document could not be ingested.",
+        ) from error
+
+    # Step 4: Return a successful response.
+    return {
+        "message": "Document uploaded and ingested successfully.",
+        "chatbot_id": authorized_chatbot_id,
+        "filename": Path(file.filename).name,
+    }
