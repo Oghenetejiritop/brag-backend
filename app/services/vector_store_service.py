@@ -66,6 +66,43 @@ class VectorStoreService:
             persist_directory=self._persist_directory,
         )
 
+    def add_documents(
+        self,
+        documents: list[Document],
+    ) -> Chroma:
+        """
+        Add document chunks to a persistent vector store.
+
+        Creates a store when none exists and appends to the
+        existing collection otherwise.
+
+        Args:
+            documents:
+                Chunks produced by DocumentService.
+
+        Returns:
+            The updated persistent Chroma vector store.
+        """
+        if not documents:
+            raise ValueError(
+                "Cannot ingest an empty document collection."
+            )
+
+        persist_path = Path(self._persist_directory)
+        database_file = persist_path / "chroma.sqlite3"
+
+        if database_file.is_file():
+            vector_store = Chroma(
+                persist_directory=self._persist_directory,
+                embedding_function=self._embeddings,
+            )
+
+            vector_store.add_documents(documents)
+
+            return vector_store
+
+        return self.create_vector_store(documents)
+
     def load_vector_store(self) -> Chroma:
         """
         Load an existing persistent Chroma vector store.

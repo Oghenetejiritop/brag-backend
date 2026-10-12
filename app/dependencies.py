@@ -101,28 +101,26 @@ class RAGManager:
         chatbot_id: str,
     ) -> None:
         """
-        Initialize a chatbot's RAG service from a document.
+        Ingest a document into a chatbot's persistent RAG store.
 
-        The caller must verify chatbot ownership and active
-        status before invoking this method.
-
-        Args:
-            file_path:
-                Path to an uploaded document.
-            user_id:
-                Public UUID of the authenticated owner.
-            chatbot_id:
-                Public UUID of the chatbot.
+        Ownership and active status must be verified by the caller.
         """
+        cache_key = (user_id, chatbot_id)
+
+        # Invalidate the cached service before changing stored vectors.
+        # This prevents reuse of a potentially outdated retriever.
+        self._chatbot_services.pop(cache_key, None)
+
         rag_service = RAGService()
 
-        # This method requires chatbot-specific ingestion.
-        # It will be connected to the upload workflow
-        # during Phase 5.7.
-        raise NotImplementedError(
-            "Chatbot-specific document ingestion "
-            "will be implemented in Phase 5.7."
+        rag_service.initialize_chatbot_from_file(
+            file_path=file_path,
+            user_id=user_id,
+            chatbot_id=chatbot_id,
         )
+
+        # Cache only after ingestion succeeds.
+        self._chatbot_services[cache_key] = rag_service
 
     def reconstruct_chatbot(
         self,

@@ -125,6 +125,75 @@ class RAGService:
             "RAG initialization completed successfully."
         )
 
+
+    def initialize_chatbot_from_file(
+        self,
+        file_path: str,
+        user_id: str,
+        chatbot_id: str,
+    ) -> None:
+        """
+        Ingest a document into one chatbot's persistent knowledge base.
+
+        Existing document chunks are preserved.
+        """
+        if not exists(file_path):
+            raise FileNotFoundError(
+                f"Document not found: {file_path}"
+            )
+
+        self._logger.info(
+            "Ingesting document for chatbot '%s'",
+            chatbot_id,
+        )
+
+        documents = self._document_service.load_and_split(
+            file_path
+        )
+
+        if not documents:
+            raise ValueError(
+                "The uploaded document contains no usable content."
+            )
+
+        vector_store_directory = (
+            self._workspace_service
+            .get_chatbot_vector_store_directory(
+                user_id=user_id,
+                chatbot_id=chatbot_id,
+            )
+        )
+
+        vector_store_service = VectorStoreService(
+            persist_directory=str(vector_store_directory),
+        )
+
+        vector_store = vector_store_service.add_documents(
+            documents
+        )
+
+        retriever = vector_store_service.create_retriever(
+            vector_store
+        )
+
+        self._vector_store = vector_store
+        self._retriever = retriever
+
+        try:
+            self._rag_chain = self._build_chain()
+
+        except Exception:
+            self._vector_store = None
+            self._retriever = None
+            self._rag_chain = None
+            raise
+
+        self._logger.info(
+            "Document ingestion completed for chatbot '%s'",
+            chatbot_id,
+        )
+
+
     def initialize_from_existing_store(
         self,
         user_id: str,
