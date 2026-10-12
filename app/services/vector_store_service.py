@@ -2,6 +2,7 @@ from pathlib import Path
 
 from langchain_community.vectorstores import Chroma
 from langchain_core.documents import Document
+from langchain_core.embeddings import Embeddings
 from langchain_openai import OpenAIEmbeddings
 
 from app.core.config import (
@@ -20,25 +21,29 @@ class VectorStoreService:
         - Configure semantic retrieval.
     """
 
+
     def __init__(
         self,
         persist_directory: str,
+        embeddings: Embeddings | None = None,
     ) -> None:
         """
         Initialize the vector-store service.
 
         Args:
             persist_directory:
-                Directory where the user's Chroma database
-                will be persisted.
+                Directory for persistent Chroma storage.
+            embeddings:
+                Optional embedding implementation. Defaults
+                to OpenAI embeddings in production.
         """
+        self._persist_directory = str(persist_directory)
 
-        # Chroma expects the persistence location as a string.
-        self._persist_directory = str(
-            persist_directory
+        self._embeddings = (
+            embeddings
+            if embeddings is not None
+            else OpenAIEmbeddings()
         )
-
-        self._embeddings = OpenAIEmbeddings()
 
     def create_vector_store(
         self,
