@@ -6,9 +6,16 @@ All chatbot operations require an authenticated database user.
 Business rules and ownership checks are delegated to ChatbotService.
 """
 
-from fastapi import APIRouter, Depends, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status
+    )
+
 from sqlalchemy.orm import Session
 
+from app.exceptions.chatbot_exceptions import InvalidChatbotNameError
 from app.api.chatbot_schemas import (
     ChatbotCreateRequest,
     ChatbotResponse,
@@ -45,11 +52,19 @@ def create_chatbot(
     chatbot_service: ChatbotService = Depends(get_chatbot_service),
 ) -> ChatbotResponse:
     """Create a chatbot owned by the authenticated user."""
-    chatbot = chatbot_service.create_chatbot(
-        user=user,
-        name=request.name,
-        description=request.description,
-    )
+    try:
+        chatbot = chatbot_service.create_chatbot(
+            user=user,
+            name=request.name,
+            description=request.description,
+        )
+    except InvalidChatbotNameError:
+        raise
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(error),
+    ) from error
 
     return ChatbotResponse.model_validate(chatbot)
 

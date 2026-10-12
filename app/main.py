@@ -1,6 +1,10 @@
 
 from fastapi import FastAPI
 
+from app.api.chatbot_exception_handlers import (
+    register_chatbot_exception_handlers,
+)
+
 from app.api.routes import router
 from app.api.chatbot_routes import router as chatbot_router
 
@@ -17,3 +21,5 @@ app.include_router(router)
 
 # Versioned persistent chatbot endpoints.
 app.include_router(chatbot_router)
+
+register_chatbot_exception_handlers(app)
