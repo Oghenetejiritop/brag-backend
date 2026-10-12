@@ -272,3 +272,22 @@ class WorkspaceService:
             ) from None
 
         return str(parsed_user_id)
+
+    def get_chatbot_upload_directory(
+        self,
+        user_id: str,
+        chatbot_id: str,
+    ) -> Path:
+        """Return an isolated upload directory for one chatbot."""
+        normalized_chatbot_id = str(UUID(chatbot_id))
+
+        uploads = (
+            self.get_user_workspace(user_id)
+            / "chatbots"
+            / normalized_chatbot_id
+            / "uploads"
+        )
+
+        uploads.mkdir(parents=True, exist_ok=True)
+        return uploads
+

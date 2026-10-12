@@ -1,4 +1,8 @@
-from pathlib import Path
+from pathlib import (
+    Path,
+    PureWindowsPath
+    )
+
 from uuid import uuid4
 
 from fastapi import UploadFile
@@ -144,3 +148,67 @@ class UploadService:
 
         return str(file_path)
 
+
+    @staticmethod
+    def _safe_filename(filename: str) -> str:
+        """Remove directory components from an uploaded filename."""
+        normalized = filename.replace("\\", "/")
+        return Path(normalized).name
+
+
+    async def save_chatbot_file(
+        self,
+        user_id: str,
+        chatbot_id: str,
+        file: UploadFile,
+    ) -> str:
+        """Save a document inside an isolated chatbot workspace."""
+        if not file.filename:
+            raise EmptyFilenameError(
+                "Uploaded file must have a filename."
+            )
+
+        safe_filename = self._safe_filename(file.filename)
+
+        if not safe_filename or safe_filename in {".", ".."}:
+            raise EmptyFilenameError(
+                "Uploaded file must have a valid filename."
+            )
+
+        self._validate_file_type(file)
+
+        unique_filename = self._generate_unique_filename(
+            safe_filename
+        )
+
+        upload_directory = (
+            self._workspace_service.get_chatbot_upload_directory(
+                user_id=user_id,
+                chatbot_id=chatbot_id,
+            )
+        )
+
+        file_path = upload_directory / unique_filename
+
+        # Limit each uploaded file to 10 MiB.
+        max_bytes = 10 * 1024 * 1024
+        chunk_size = 1024 * 1024
+        total_bytes = 0
+
+        try:
+            with file_path.open("xb") as destination:
+                while chunk := await file.read(chunk_size):
+                    total_bytes += len(chunk)
+
+                    if total_bytes > max_bytes:
+                        raise ValueError(
+                            "Uploaded file exceeds the 10 MiB limit."
+                        )
+
+                    destination.write(chunk)
+
+        except Exception:
+            file_path.unlink(missing_ok=True)
+            raise
+
+        return str(file_path)
