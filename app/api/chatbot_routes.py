@@ -17,19 +17,28 @@ from fastapi import (
     UploadFile,
     )
 
+from fastapi.concurrency import run_in_threadpool
+
 from sqlalchemy.orm import Session
 
-from app.exceptions.chatbot_exceptions import InvalidChatbotNameError
 from app.api.chatbot_schemas import (
     ChatbotCreateRequest,
+    ChatbotQueryRequest,
+    ChatbotQueryResponse,
     ChatbotResponse,
 )
+
 from app.api.dependencies import get_authenticated_user
 from app.db.database import get_database_session
 from app.db.models.user import User
 from app.services.chatbot_service import ChatbotService
 
-from app.dependencies import rag_manager, upload_service
+from app.dependencies import (
+    rag_manager,
+    upload_service
+    )
+
+from app.exceptions.chatbot_exceptions import InvalidChatbotNameError
 from app.exceptions.upload_exceptions import (
     EmptyFilenameError,
     UnsupportedDocumentTypeError,
@@ -205,3 +214,60 @@ async def upload_chatbot_document(
         "chatbot_id": authorized_chatbot_id,
         "filename": Path(file.filename).name,
     }
+
+
+@router.post(
+    "/{chatbot_id}/query",
+    response_model=ChatbotQueryResponse,
+)
+async def query_chatbot(
+    chatbot_id: str,
+    request: ChatbotQueryRequest,
+    user: User = Depends(get_authenticated_user),
+    chatbot_service: ChatbotService = Depends(get_chatbot_service),
+) -> ChatbotQueryResponse:
+    """
+    Answer a question using an owned, active chatbot.
+
+    The chatbot must have an existing knowledge base.
+    """
+
+    # 1. Verify ownership and active status first.
+    chatbot = chatbot_service.get_chatbot(
+        user=user,
+        public_chatbot_id=chatbot_id,
+    )
+
+    user_id = str(user.user_id)
+    authorized_chatbot_id = str(chatbot.chatbot_id)
+
+    # 2. Load the chatbot's RAG pipeline.
+    try:
+        rag_service = await run_in_threadpool(
+            rag_manager.get_or_reconstruct_chatbot,
+            user_id=user_id,
+            chatbot_id=authorized_chatbot_id,
+        )
+
+    except (FileNotFoundError, ValueError) as error:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "This chatbot has no initialized knowledge base. "
+                "Upload a document first."
+            ),
+        ) from error
+
+    # 3. Generate an answer.
+    # This is run in a worker thread because the existing
+    # answer_question method is synchronous.
+    answer = await run_in_threadpool(
+        rag_service.answer_question,
+        question=request.question,
+    )
+
+    # 4. Return the answer.
+    return ChatbotQueryResponse(
+        chatbot_id=authorized_chatbot_id,
+        answer=answer,
+    )
