@@ -7,7 +7,7 @@ Uses a BRAG API key to query an existing chatbot.
 Requires:
     pip install requests
 
-Credentials are read from environment variables.
+    Credentials are read from environment variables.
 """
 
 import os

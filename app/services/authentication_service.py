@@ -12,13 +12,17 @@ import secrets
 
 from sqlalchemy.orm import Session
 
+from app.db.models.api_key import APIKey
 from app.db.models.user import User
+
 from app.exceptions.auth_exceptions import (
     InactiveAPIKeyError,
     InactiveUserError,
     InvalidAPIKeyError,
 )
+
 from app.models.api_key_result import APIKeyCreationResult
+
 from app.repositories.api_key_repository import APIKeyRepository
 
 
@@ -99,6 +103,27 @@ class AuthenticationService:
             api_key_id=api_key_record.id,
             key_prefix=api_key_record.key_prefix,
             api_key=plaintext_key,
+        )
+
+    def list_api_keys(
+        self,
+        user: User,
+    ) -> list[APIKey]:
+        """
+        List API-key records belonging to an active user.
+
+        The repository filters by the authenticated user's
+        internal database ID.
+
+        Secret key hashes must never be included in API responses.
+        """
+        if not user.is_active:
+            raise InactiveUserError(
+                "Cannot list keys for an inactive user."
+            )
+
+        return self._api_key_repository.get_by_user_id(
+            user_id=user.id
         )
 
     def authenticate(
