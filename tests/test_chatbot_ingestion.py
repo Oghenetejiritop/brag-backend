@@ -5,6 +5,7 @@ Test chatbot-specific persistent document ingestion.
 Uses deterministic fake embeddings.
 """
 
+import gc
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -68,6 +69,14 @@ def test_multiple_document_ingestion() -> None:
 
         assert first_document.page_content in stored_documents
         assert second_document.page_content in stored_documents
+        # Release references to Chroma before deleting temporary files.
+        del first_store
+        del second_store
+        del reconstructed_store
+        del service
+        del reconstructed_service
+
+        gc.collect()
 
         print("PASS: Both documents survived reconstruction.")
 
