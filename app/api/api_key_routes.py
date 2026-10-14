@@ -6,6 +6,7 @@ Authenticated BRAG API-key management endpoints.
 from fastapi import (
     APIRouter,
     Depends,
+    HTTPException,
     Response,
     status
     )
@@ -98,4 +99,32 @@ def create_api_key(
         api_key=result.api_key,
     )
 
+@router.post(
+    "/{api_key_id}/revoke",
+    response_model=APIKeyResponse,
+)
+def revoke_api_key(
+    api_key_id: int,
+    user: User = Depends(get_authenticated_user),
+    authentication_service: AuthenticationService = Depends(
+        get_authentication_service
+    ),
+) -> APIKeyResponse:
+    """
+    Revoke an API key belonging to the authenticated user.
 
+    Return 404 for both nonexistent and foreign keys.
+    """
+
+    api_key = authentication_service.revoke_api_key(
+        user=user,
+        api_key_id=api_key_id,
+    )
+
+    if api_key is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="API key not found.",
+        )
+
+    return APIKeyResponse.model_validate(api_key)

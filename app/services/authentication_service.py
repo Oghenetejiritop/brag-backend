@@ -189,6 +189,37 @@ class AuthenticationService:
 
         return user
 
+    def revoke_api_key(
+        self,
+        user: User,
+        api_key_id: int,
+    ) -> APIKey | None:
+        """
+        Revoke an API key owned by the authenticated user.
+
+        Returns None when the key does not exist or belongs
+        to another user, avoiding disclosure of tenant data.
+        """
+
+        if not user.is_active:
+            raise InactiveUserError(
+                "Cannot revoke an API key for an inactive user."
+            )
+
+        api_key = self._api_key_repository.get_by_id(
+            api_key_id=api_key_id
+        )
+
+        if api_key is None or api_key.user_id != user.id:
+            return None
+
+        if not api_key.is_active:
+            return api_key
+
+        return self._api_key_repository.revoke(
+            api_key=api_key
+        )
+
     def _generate_api_key(self) -> str:
         """
         Generate a cryptographically secure BRAG API key.
