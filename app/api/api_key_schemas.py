@@ -20,3 +20,14 @@ class APIKeyResponse(BaseModel):
     is_active: bool
     created_at: datetime
     last_used_at: datetime | None
+
+class APIKeyCreationResponse(BaseModel):
+    """
+    Response returned when a new API key is created.
+
+    The plaintext credential is shown only once.
+    """
+
+    api_key_id: int
+    key_prefix: str
+    api_key: str

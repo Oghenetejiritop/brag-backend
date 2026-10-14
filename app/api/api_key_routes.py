@@ -5,12 +5,18 @@ Authenticated BRAG API-key management endpoints.
 
 from fastapi import (
     APIRouter,
-    Depends
+    Depends,
+    Response,
+    status
     )
 
 from sqlalchemy.orm import Session
 
-from app.api.api_key_schemas import APIKeyResponse
+from app.api.api_key_schemas import (
+    APIKeyCreationResponse,
+    APIKeyResponse,
+    )
+
 from app.api.dependencies import get_authenticated_user
 from app.db.database import get_database_session
 from app.db.models.user import User
@@ -56,3 +62,40 @@ def list_api_keys(
         APIKeyResponse.model_validate(key)
         for key in keys
     ]
+
+@router.post(
+    "",
+    response_model=APIKeyCreationResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_api_key(
+    response: Response,
+    user: User = Depends(get_authenticated_user),
+    authentication_service: AuthenticationService = Depends(
+        get_authentication_service
+    ),
+) -> APIKeyCreationResponse:
+    """
+    Create an API key for the authenticated user.
+
+    The complete credential is returned only once.
+    Subsequent listing requests expose metadata only.
+    """
+
+    # Prevent caching of a response containing a secret.
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+
+    # The user comes from the authenticated dependency,
+    # not from client-supplied data.
+    result = authentication_service.create_api_key(
+        user=user
+    )
+
+    return APIKeyCreationResponse(
+        api_key_id=result.api_key_id,
+        key_prefix=result.key_prefix,
+        api_key=result.api_key,
+    )
+
+
