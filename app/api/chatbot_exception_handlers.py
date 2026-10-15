@@ -55,5 +55,5 @@ def register_chatbot_exception_handlers(app: FastAPI) -> None:
     ) -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content={"detail": str(exc)},
+            content={"detail": "Chatbot name is invalid."},
         )
