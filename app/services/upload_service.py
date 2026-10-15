@@ -11,6 +11,7 @@ from app.core.config import SUPPORTED_DOCUMENT_EXTENSIONS
 
 from app.exceptions.upload_exceptions import (
     EmptyFilenameError,
+    FileTooLargeError,
     UnsupportedDocumentTypeError,
 )
 
@@ -201,7 +202,7 @@ class UploadService:
                     total_bytes += len(chunk)
 
                     if total_bytes > max_bytes:
-                        raise ValueError(
+                        raise FileTooLargeError(
                             "Uploaded file exceeds the 10 MiB limit."
                         )
 

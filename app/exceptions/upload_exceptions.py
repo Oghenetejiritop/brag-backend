@@ -26,3 +26,7 @@ class EmptyFilenameError(UploadError):
     Raised when an uploaded file has no filename.
     """
     pass
+
+
+class FileTooLargeError(UploadError):
+    """Raised when an upload exceeds the allowed size."""
