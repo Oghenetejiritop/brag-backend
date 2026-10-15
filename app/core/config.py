@@ -71,3 +71,31 @@ SUPPORTED_DOCUMENT_EXTENSIONS = {
 # or MySQL configuration during a future production migration.
 DATABASE_URL = "sqlite:///./brag.db"
 
+
+
+# Browser origins permitted to call BRAG from the React frontend.
+# Set BRAG_CORS_ORIGINS to comma-separated, explicit origins in deployment.
+# No wildcard origins are permitted.
+import os
+
+_DEFAULT_CORS_ORIGINS = (
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+)
+
+def get_cors_origins() -> list[str]:
+    """Return exact, validated origins for browser cross-origin requests."""
+    raw = os.getenv("BRAG_CORS_ORIGINS")
+    if raw is None:
+        return list(_DEFAULT_CORS_ORIGINS)
+
+    origins = [origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()]
+    for origin in origins:
+        if origin == "*" or not origin.startswith(("http://", "https://")):
+            raise ValueError("BRAG_CORS_ORIGINS must contain explicit HTTP(S) origins.")
+        # Origins cannot include a path, query, or fragment.
+        from urllib.parse import urlsplit
+        parsed = urlsplit(origin)
+        if not parsed.netloc or parsed.username or parsed.password or parsed.path or parsed.query or parsed.fragment:
+            raise ValueError("BRAG_CORS_ORIGINS contains an invalid origin.")
+    return list(dict.fromkeys(origins))
