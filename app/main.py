@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import get_cors_origins
+from app.core.config import get_cors_origins, validate_environment
 
 from app.api.chatbot_exception_handlers import (
     register_chatbot_exception_handlers,
@@ -39,3 +39,6 @@ for route in routers:
     app.include_router(route)
 
 register_chatbot_exception_handlers(app)
+
+# Validate deployment configuration on application startup.
+app.add_event_handler("startup", validate_environment)

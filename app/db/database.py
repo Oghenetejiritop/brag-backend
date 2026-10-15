@@ -33,13 +33,12 @@ SQLITE_CONNECT_ARGS = {
 # application rather than once per request.
 engine = create_engine(
     DATABASE_URL,
-    connect_args=SQLITE_CONNECT_ARGS,
+    connect_args=SQLITE_CONNECT_ARGS if DATABASE_URL.startswith("sqlite:") else {},
 )
 
 # SQLite does not enforce foreign-key constraints by default.
 # Enable them for every SQLAlchemy-managed database connection
 # so API-key records cannot reference users that do not exist.
-@event.listens_for(engine, "connect")
 def enable_sqlite_foreign_keys(
     database_connection,
     connection_record,
@@ -59,6 +58,10 @@ def enable_sqlite_foreign_keys(
         cursor.execute("PRAGMA foreign_keys=ON")
     finally:
         cursor.close()
+
+
+if engine.dialect.name == "sqlite":
+    event.listen(engine, "connect", enable_sqlite_foreign_keys)
 
 
 # The session factory creates independent database sessions. Each request
