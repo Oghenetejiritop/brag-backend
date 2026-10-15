@@ -1,6 +1,8 @@
 
 from os.path import exists
 
+from openai import APIConnectionError, APITimeoutError, InternalServerError, RateLimitError
+
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
@@ -12,6 +14,7 @@ from app.core.config import (
     DEFAULT_TEMPERATURE,
 )
 from app.core.logger import get_logger
+from app.exceptions.rag_exceptions import RAGProviderUnavailableError
 from app.services.document_service import DocumentService
 from app.services.vector_store_service import VectorStoreService
 from app.services.workspace_service import WorkspaceService
@@ -281,9 +284,15 @@ class RAGService:
                 "Upload a document first."
             )
 
-        return self._rag_chain.invoke(
-            question
-        )
+        try:
+            return self._rag_chain.invoke(question)
+        except (APIConnectionError, APITimeoutError, InternalServerError, RateLimitError) as error:
+            self._logger.warning(
+                "AI provider request failed: %s", type(error).__name__
+            )
+            raise RAGProviderUnavailableError(
+                "The AI service is temporarily unavailable."
+            ) from error
 
     def _format_documents(
         self,

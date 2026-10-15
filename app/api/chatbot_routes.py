@@ -39,6 +39,7 @@ from app.dependencies import (
     )
 
 from app.exceptions.chatbot_exceptions import InvalidChatbotNameError
+from app.exceptions.rag_exceptions import RAGProviderUnavailableError
 from app.exceptions.upload_exceptions import (
     EmptyFilenameError,
     UnsupportedDocumentTypeError,
@@ -261,10 +262,17 @@ async def query_chatbot(
     # 3. Generate an answer.
     # This is run in a worker thread because the existing
     # answer_question method is synchronous.
-    answer = await run_in_threadpool(
-        rag_service.answer_question,
-        question=request.question,
-    )
+    try:
+        answer = await run_in_threadpool(
+            rag_service.answer_question,
+            question=request.question,
+        )
+    except RAGProviderUnavailableError as error:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The AI service is temporarily unavailable.",
+            headers={"Retry-After": "30"},
+        ) from error
 
     # 4. Return the answer.
     return ChatbotQueryResponse(
