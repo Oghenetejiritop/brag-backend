@@ -1,30 +1,34 @@
 
-from contextlib import asynccontextmanager
+"""BRAG FastAPI application."""
+
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.api_key_routes import router as api_key_router
+from app.api.chatbot_exception_handlers import register_chatbot_exception_handlers
+from app.api.chatbot_routes import router as chatbot_router
+from app.api.routes import router
+from app.api.security import (
+    SecurityHeadersMiddleware,
+    register_unexpected_error_handler
+)
+
 from app.core.config import (
-    get_cors_origins,
     get_api_documentation_settings,
+    get_cors_origins,
     validate_environment,
 )
 
-from app.api.chatbot_exception_handlers import (
-    register_chatbot_exception_handlers,
-)
-
-from app.api.routes import router
-from app.api.api_key_routes import router as api_key_router
-from app.api.chatbot_routes import router as chatbot_router
-
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Validate configuration before accepting API requests."""
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """Validate settings before serving requests."""
     validate_environment()
     yield
+
 
 app = FastAPI(
     title="BRAG API",
@@ -34,7 +38,7 @@ app = FastAPI(
     **get_api_documentation_settings(),
 )
 
-# Explicit browser-origin allowlist. API-key authentication remains required.
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=get_cors_origins(),
@@ -43,16 +47,8 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
-routers = [
-    router,    # Existing legacy API endpoints.
-    api_key_router,    # Authenticated API-key management endpoints.
-    chatbot_router,    # Versioned persistent chatbot endpoints.
-]
-
-for route in routers:
+for route in (router, api_key_router, chatbot_router):
     app.include_router(route)
 
 register_chatbot_exception_handlers(app)
-
-# Validate deployment configuration on application startup.
-validate_environment()
+register_unexpected_error_handler(app)
