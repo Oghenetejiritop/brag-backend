@@ -42,6 +42,7 @@ from app.exceptions.chatbot_exceptions import InvalidChatbotNameError
 from app.exceptions.rag_exceptions import RAGProviderUnavailableError
 from app.exceptions.upload_exceptions import (
     EmptyFilenameError,
+    FileTooLargeError,
     UnsupportedDocumentTypeError,
 )
 
@@ -143,8 +144,6 @@ def deactivate_chatbot(
     return ChatbotResponse.model_validate(chatbot)
 
 
-
-
 @router.post(
     "/{chatbot_id}/documents",
     status_code=status.HTTP_201_CREATED,
@@ -186,12 +185,16 @@ async def upload_chatbot_document(
             detail=str(error),
         ) from error
 
+    except FileTooLargeError as error:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=str(error),
+        ) from error
+
     except ValueError as error:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE
-            if "10 MiB limit" in str(error)
-            else status.HTTP_400_BAD_REQUEST,
-            detail=str(error),
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid document upload.",
         ) from error
 
     # Step 3: Ingest into the chatbot's persistent vector store.
