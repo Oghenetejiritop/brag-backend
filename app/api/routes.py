@@ -21,6 +21,7 @@ from app.dependencies import (
 
 from app.exceptions.upload_exceptions import (
     EmptyFilenameError,
+    FileTooLargeError,
     UnsupportedDocumentTypeError,
 )
 
@@ -137,11 +138,14 @@ async def upload_file(
             detail=str(error),
         )
 
-    except Exception as error:
+    except FileTooLargeError as error:
         raise HTTPException(
-            status_code=500,
-            detail=str(error),
-        )
+            status_code=413,
+            detail="Uploaded file exceeds the 10 MiB limit.",
+        ) from error
+
+    # Unexpected exceptions are handled by the centralized 500 handler.
+    # Never return str(error) to clients: it may contain secrets or paths.
 
     return {
         "message": "Document uploaded successfully.",

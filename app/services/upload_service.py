@@ -1,6 +1,6 @@
+
 from pathlib import (
     Path,
-    PureWindowsPath
     )
 
 from uuid import uuid4
@@ -94,58 +94,35 @@ class UploadService:
 
         return f"{unique_id}_{original_filename}"
 
-    async def save_file(
-        self,
-        user_id: str,
-        file: UploadFile,
-    ) -> str:
-        """
-        Save an uploaded file to disk.
-
-        Args:
-        user_id:
-        Identifier of the active user.
-
-                    file:
-                Uploaded file received by FastAPI.
-
-            Raises:
-            EmptyFilenameError
-            UnsupportedDocumentTypeError
-            
-        Returns:
-            Absolute path to the saved file.
-        """
-
+    async def save_file(self, user_id: str, file: UploadFile) -> str:
+        """Save a legacy user upload using the same 10 MiB policy as chatbots."""
         if not file.filename:
-            raise EmptyFilenameError(
-            "Uploaded file must have a filename."
-            )
+            raise EmptyFilenameError("Uploaded file must have a filename.")
 
-        # -------------------------------------------------------------
-        # Reject unsupported document types before writing to disk.
-        # -------------------------------------------------------------
+        safe_filename = self._safe_filename(file.filename)
+        if not safe_filename or safe_filename in {".", ".."}:
+            raise EmptyFilenameError("Uploaded file must have a valid filename.")
+
         self._validate_file_type(file)
-
-        # Generate a unique filename to avoid overwriting existing
-        # documents that share the same original name.
-        unique_filename = self._generate_unique_filename(file.filename)
-
-        # Retrieve the user's dedicated upload directory.
-        # WorkspaceService ensures the directory exists.
-        upload_directory = self._workspace_service.get_upload_directory(
-            user_id
-        )
-
+        unique_filename = self._generate_unique_filename(safe_filename)
+        upload_directory = self._workspace_service.get_upload_directory(user_id)
         file_path = upload_directory / unique_filename
 
-        # -------------------------------------------------------------
-        # Read the uploaded file and persist it.
-        # Using Path keeps the implementation platform-independent.
-        contents = await file.read()
-
-        with file_path.open("wb") as destination:
-            destination.write(contents)
+        max_bytes = 10 * 1024 * 1024
+        chunk_size = 1024 * 1024
+        total_bytes = 0
+        try:
+            with file_path.open("xb") as destination:
+                while chunk := await file.read(chunk_size):
+                    total_bytes += len(chunk)
+                    if total_bytes > max_bytes:
+                        raise FileTooLargeError(
+                            "Uploaded file exceeds the 10 MiB limit."
+                        )
+                    destination.write(chunk)
+        except Exception:
+            file_path.unlink(missing_ok=True)
+            raise
 
         return str(file_path)
 
