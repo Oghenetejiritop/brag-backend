@@ -1,4 +1,3 @@
-
 import os
 
 
@@ -64,6 +63,9 @@ SUPPORTED_DOCUMENT_EXTENSIONS = {
     ".pdf",
 }
 
+# Shared limit for legacy and chatbot PDF uploads.
+DEFAULT_MAX_UPLOAD_SIZE_MB = 10
+MAX_UPLOAD_SIZE_BYTES = DEFAULT_MAX_UPLOAD_SIZE_MB * 1024 * 1024
 
 # =============================================================================
 # Relational Database Configuration
@@ -139,3 +141,4 @@ def get_api_documentation_settings() -> dict[str, str | None]:
     if get_brag_environment() == "production":
         return {"docs_url": None, "redoc_url": None, "openapi_url": None}
     return {"docs_url": "/docs", "redoc_url": "/redoc", "openapi_url": "/openapi.json"}
+

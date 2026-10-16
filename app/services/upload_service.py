@@ -7,7 +7,10 @@ from uuid import uuid4
 
 from fastapi import UploadFile
 
-from app.core.config import SUPPORTED_DOCUMENT_EXTENSIONS
+from app.core.config import (
+    SUPPORTED_DOCUMENT_EXTENSIONS,
+    MAX_UPLOAD_SIZE_BYTES
+)
 
 from app.exceptions.upload_exceptions import (
     EmptyFilenameError,
@@ -108,7 +111,7 @@ class UploadService:
         upload_directory = self._workspace_service.get_upload_directory(user_id)
         file_path = upload_directory / unique_filename
 
-        max_bytes = 10 * 1024 * 1024
+        max_bytes = MAX_UPLOAD_SIZE_BYTES
         chunk_size = 1024 * 1024
         total_bytes = 0
         try:
@@ -169,7 +172,7 @@ class UploadService:
         file_path = upload_directory / unique_filename
 
         # Limit each uploaded file to 10 MiB.
-        max_bytes = 10 * 1024 * 1024
+        max_bytes = MAX_UPLOAD_SIZE_BYTES
         chunk_size = 1024 * 1024
         total_bytes = 0
 

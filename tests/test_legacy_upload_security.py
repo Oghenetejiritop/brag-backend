@@ -7,12 +7,10 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 import pytest
-from fastapi import (
-    HTTPException,
-    UploadFile
-)
+from fastapi import HTTPException, UploadFile
 
 from app.api import routes
+from app.core.config import MAX_UPLOAD_SIZE_BYTES
 from app.exceptions.upload_exceptions import FileTooLargeError
 from app.services.upload_service import UploadService
 
@@ -49,13 +47,13 @@ def test_legacy_upload_strips_windows_directories(tmp_path: Path) -> None:
 
 def test_legacy_upload_rejects_oversize_and_removes_partial_file(tmp_path: Path) -> None:
     with pytest.raises(FileTooLargeError):
-        asyncio.run(service_at(tmp_path).save_file("user", upload("big.pdf", b"x" * (10 * 1024 * 1024 + 1))))
+        asyncio.run(service_at(tmp_path).save_file("user", upload("big.pdf", b"x" * (MAX_UPLOAD_SIZE_BYTES + 1))))
     assert list(tmp_path.iterdir()) == []
 
 
 def test_legacy_upload_accepts_exact_limit(tmp_path: Path) -> None:
-    saved = asyncio.run(service_at(tmp_path).save_file("user", upload("exact.pdf", b"x" * (10 * 1024 * 1024))))
-    assert Path(saved).stat().st_size == 10 * 1024 * 1024
+    saved = asyncio.run(service_at(tmp_path).save_file("user", upload("exact.pdf", b"x" * (MAX_UPLOAD_SIZE_BYTES))))
+    assert Path(saved).stat().st_size == MAX_UPLOAD_SIZE_BYTES
 
 
 def test_legacy_route_maps_size_error_to_413(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -70,3 +68,10 @@ def test_legacy_route_does_not_expose_unexpected_errors(monkeypatch: pytest.Monk
     monkeypatch.setattr(routes.upload_service, "save_file", AsyncMock(side_effect=RuntimeError("PRIVATE DATABASE PASSWORD")))
     with pytest.raises(RuntimeError, match="PRIVATE DATABASE PASSWORD"):
         asyncio.run(routes.upload_file(upload("x.pdf", b""), SimpleNamespace(user_id="u")))
+
+
+def test_shared_limit_applies_to_both_upload_methods() -> None:
+    import inspect
+    from app.services.upload_service import UploadService
+    assert inspect.getsource(UploadService.save_file).count("MAX_UPLOAD_SIZE_BYTES") >= 1
+    assert inspect.getsource(UploadService.save_chatbot_file).count("MAX_UPLOAD_SIZE_BYTES") >= 1
