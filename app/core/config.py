@@ -1,3 +1,4 @@
+
 import os
 
 
@@ -128,3 +129,13 @@ def validate_environment() -> None:
         raise ValueError("Production requires BRAG_DATABASE_URL.")
     if DATABASE_URL.startswith("sqlite:"):
         raise ValueError("Production requires a non-SQLite database URL.")
+
+
+def get_api_documentation_settings() -> dict[str, str | None]:
+    """Disable interactive API documentation in production by default.
+
+    Authentication remains enforced independently of documentation visibility.
+    """
+    if get_brag_environment() == "production":
+        return {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    return {"docs_url": "/docs", "redoc_url": "/redoc", "openapi_url": "/openapi.json"}
