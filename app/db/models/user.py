@@ -1,12 +1,15 @@
+
 """
 Persistent user model for BRAG.
 
-The User model represents the account that owns API keys,
-documents, vector stores, chatbots, and future subscriptions.
+Users own API keys, chatbots, and future platform resources.
+
+Email/password authentication is optional for existing accounts.
+New browser accounts will use these fields after the registration
+and login services are implemented.
 """
 
 from __future__ import annotations
-
 
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -37,9 +40,9 @@ class User(Base):
     """
     Represents a persistent BRAG user.
 
-    The integer primary key is used internally for efficient database
-    relationships. The UUID-based user_id is safe to expose through
-    application services and future public APIs.
+    The integer primary key is used internally for database
+    relationships. The public UUID identifies the account
+    through application services and public APIs.
     """
 
     __tablename__ = "users"
@@ -49,8 +52,6 @@ class User(Base):
         autoincrement=True,
     )
 
-    # Use a non-sequential public identifier so database row numbers
-    # are never exposed as tenant identities.
     user_id: Mapped[str] = mapped_column(
         String(36),
         unique=True,
@@ -59,8 +60,22 @@ class User(Base):
         default=lambda: str(uuid4()),
     )
 
-    # Disabling a user later should immediately prevent authentication
-    # without deleting their historical records.
+    # Existing API-key-only accounts may have no email yet.
+    # Registration will normalize emails before storing them.
+    email: Mapped[str | None] = mapped_column(
+        String(254),
+        unique=True,
+        index=True,
+        nullable=True,
+    )
+
+    # Store only a password hash, never a plaintext password.
+    # The password hashing service will be added separately.
+    password_hash: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+    )
+
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         nullable=False,
@@ -68,36 +83,29 @@ class User(Base):
         server_default=true(),
     )
 
-    # Let the database assign creation time so records created by
-    # different application processes follow one consistent rule.
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         server_default=func.now(),
     )
 
-    # A user may own multiple API keys for separate integrations,
-    # environments, or future key-rotation workflows.
     api_keys: Mapped[list[APIKey]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
     )
 
-    # A user may own multiple independently addressable chatbots.
-    # Ownership is enforced through the Chatbot.user_id foreign key.
-    chatbots: Mapped[list["Chatbot"]] = relationship(
+    chatbots: Mapped[list[Chatbot]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
     )
 
     def __repr__(self) -> str:
         """
-        Return a safe developer representation without credentials.
+        Return a safe representation without credentials
+        or personally identifying login information.
         """
-
         return (
             f"User(id={self.id!r}, "
             f"user_id={self.user_id!r}, "
             f"is_active={self.is_active!r})"
         )
-
