@@ -1,3 +1,4 @@
+
 """BRAG FastAPI application."""
 
 from collections.abc import AsyncIterator
@@ -9,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.api_key_routes import router as api_key_router
 from app.api.browser_auth_routes import router as browser_auth_router
 from app.api.browser_chatbot_routes import router as browser_chatbot_router
+from app.api.browser_knowledge_routes import router as browser_knowledge_router
 from app.api.chatbot_exception_handlers import register_chatbot_exception_handlers
 from app.api.chatbot_routes import router as chatbot_router
 from app.api.routes import router
@@ -45,7 +47,8 @@ for route in (
     api_key_router,
     chatbot_router,
     browser_auth_router,
-    browser_chatbot_router
+    browser_chatbot_router,
+    browser_knowledge_router,
 ):
     app.include_router(route)
 
