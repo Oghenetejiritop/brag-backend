@@ -42,6 +42,7 @@ class ChatbotResponse(BaseModel):
     name: str
     description: str | None
     is_active: bool
+    is_published: bool
     created_at: datetime
     updated_at: datetime
 

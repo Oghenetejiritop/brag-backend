@@ -54,6 +54,7 @@ def test_chatbot_schemas() -> None:
         name="Python Tutor",
         description=None,
         is_active=True,
+        is_published=False,
         created_at=now,
         updated_at=now,
     )
@@ -61,6 +62,7 @@ def test_chatbot_schemas() -> None:
     response_data = response.model_dump()
 
     assert "chatbot_id" in response_data
+    assert response_data["is_published"] is False
     assert "id" not in response_data
     assert "user_id" not in response_data
 

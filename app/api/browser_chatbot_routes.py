@@ -1,3 +1,4 @@
+
 """Browser-session assistant endpoints; developer API-key routes remain unchanged."""
 
 import hmac
@@ -75,3 +76,16 @@ def create_browser_chatbot(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     return ChatbotResponse.model_validate(assistant)
+
+
+@router.post("/{chatbot_id}/publish", response_model=ChatbotResponse)
+def publish_browser_chatbot(chatbot_id: str, user=Depends(require_browser_csrf), database_session: Session = Depends(get_database_session)):
+    assistant = ChatbotService(database_session).get_chatbot(user=user, public_chatbot_id=chatbot_id)
+    from app.repositories.chatbot_repository import ChatbotRepository
+    return ChatbotResponse.model_validate(ChatbotRepository(database_session).set_published(assistant, True))
+
+@router.post("/{chatbot_id}/unpublish", response_model=ChatbotResponse)
+def unpublish_browser_chatbot(chatbot_id: str, user=Depends(require_browser_csrf), database_session: Session = Depends(get_database_session)):
+    assistant = ChatbotService(database_session).get_chatbot(user=user, public_chatbot_id=chatbot_id, require_active=False)
+    from app.repositories.chatbot_repository import ChatbotRepository
+    return ChatbotResponse.model_validate(ChatbotRepository(database_session).set_published(assistant, False))

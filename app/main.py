@@ -15,15 +15,9 @@ from app.api.browser_knowledge_routes import router as browser_knowledge_router
 from app.api.chatbot_exception_handlers import register_chatbot_exception_handlers
 from app.api.chatbot_routes import router as chatbot_router
 from app.api.routes import router
-from app.api.security import (
-    SecurityHeadersMiddleware,
-    register_unexpected_error_handler
-)
-from app.core.config import (
-    get_api_documentation_settings,
-    get_cors_origins,
-    validate_environment
-)
+from app.api.public_chatbot_routes import router as public_chatbot_router
+from app.api.security import SecurityHeadersMiddleware, register_unexpected_error_handler
+from app.core.config import get_api_documentation_settings, get_cors_origins, validate_environment
 
 
 @asynccontextmanager
@@ -58,6 +52,7 @@ for route in (
     browser_auth_router,
     browser_chatbot_router,
     browser_knowledge_router,
+    public_chatbot_router,
 ):
     app.include_router(route)
 

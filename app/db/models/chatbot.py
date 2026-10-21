@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     func,
     true,
+    false,
 )
 from sqlalchemy.orm import (
     Mapped,
@@ -76,6 +77,10 @@ class Chatbot(Base):
         nullable=False,
         default=True,
         server_default=true(),
+    )
+
+    is_published: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false(),
     )
 
     created_at: Mapped[datetime] = mapped_column(

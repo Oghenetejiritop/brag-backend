@@ -36,6 +36,7 @@ class FakeChatbotService:
             name=name.strip(),
             description=description,
             is_active=True,
+            is_published=False,
             created_at=now,
             updated_at=now,
         )
@@ -121,6 +122,7 @@ def test_chatbot_api_security() -> None:
                 response.text
             )
 
+            assert response.json()["is_published"] is False
             chatbot_id = response.json()["chatbot_id"]
             print("PASS: User A created a chatbot.")
 
@@ -129,6 +131,7 @@ def test_chatbot_api_security() -> None:
 
             assert response.status_code == 200
             assert len(response.json()) == 1
+            assert response.json()[0]["is_published"] is False
             print("PASS: User A can list their chatbot.")
 
             # User A can retrieve their chatbot.
@@ -137,6 +140,7 @@ def test_chatbot_api_security() -> None:
             )
 
             assert response.status_code == 200
+            assert response.json()["is_published"] is False
             print("PASS: User A can retrieve their chatbot.")
 
             # Switch the authenticated identity to User B.
@@ -178,6 +182,7 @@ def test_chatbot_api_security() -> None:
 
             assert response.status_code == 200
             assert response.json()["is_active"] is True
+            assert response.json()["is_published"] is False
             print("PASS: Unauthorized attempt changed nothing.")
 
             # User A deactivates their chatbot.

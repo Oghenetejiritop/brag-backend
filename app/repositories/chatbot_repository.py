@@ -220,3 +220,21 @@ class ChatbotRepository:
             raise
 
         return chatbot
+
+    def set_published(self, chatbot: Chatbot, published: bool) -> Chatbot:
+        chatbot.is_published = published
+        try:
+            self._database_session.commit()
+            self._database_session.refresh(chatbot)
+        except Exception:
+            self._database_session.rollback()
+            raise
+        return chatbot
+
+    def get_published(self, public_chatbot_id: str) -> Chatbot | None:
+        statement = select(Chatbot).where(
+            Chatbot.chatbot_id == public_chatbot_id,
+            Chatbot.is_active.is_(True),
+            Chatbot.is_published.is_(True),
+        )
+        return self._database_session.scalar(statement)
