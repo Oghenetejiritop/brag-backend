@@ -69,7 +69,7 @@ async def public_query(chatbot_id: str, payload: ChatbotQueryRequest, request: R
     except (ValueError, FileNotFoundError) as exc:
         raise HTTPException(409, "This assistant has no ready knowledge base.") from exc
     try:
-        answer = await run_in_threadpool(rag.answer_question, question=payload.question)
+        answer = await run_in_threadpool(rag.answer_question, question=payload.question, assistant_name=assistant.name, assistant_description=assistant.description)
     except RAGProviderUnavailableError as exc:
         raise HTTPException(503, "The AI provider is temporarily unavailable.", headers={"Retry-After": "30"}) from exc
     return ChatbotQueryResponse(chatbot_id=assistant.chatbot_id, answer=answer)

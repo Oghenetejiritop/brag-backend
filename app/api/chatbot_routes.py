@@ -269,6 +269,8 @@ async def query_chatbot(
         answer = await run_in_threadpool(
             rag_service.answer_question,
             question=request.question,
+            assistant_name=chatbot.name,
+            assistant_description=chatbot.description,
         )
     except RAGProviderUnavailableError as error:
         raise HTTPException(

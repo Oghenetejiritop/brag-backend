@@ -132,6 +132,8 @@ async def query_browser_assistant(
         answer = await run_in_threadpool(
             rag_service.answer_question,
             question=payload.question,
+            assistant_name=assistant.name,
+            assistant_description=assistant.description,
         )
     except RAGProviderUnavailableError as exc:
         raise HTTPException(
